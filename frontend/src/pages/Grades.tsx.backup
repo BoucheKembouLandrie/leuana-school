@@ -1,0 +1,787 @@
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import {
+    Box,
+    Button,
+    Paper,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Typography,
+    TextField,
+    MenuItem,
+    Alert,
+    Grid,
+    Tabs,
+    Tab,
+    IconButton,
+} from '@mui/material';
+import PrintIcon from '@mui/icons-material/Print';
+import CloseIcon from '@mui/icons-material/Close';
+import api from '../services/api';
+
+interface Class {
+    id: number;
+    libelle: string;
+}
+
+interface Student {
+    id: number;
+    nom: string;
+    prenom: string;
+}
+
+interface Subject {
+    id: number;
+    nom: string;
+    coefficient: number;
+}
+
+interface GradeEntry {
+    matiere_id: number;
+    matiere_nom: string;
+    coefficient: number;
+    note: string; // Keep as string for input handling
+    note_finale: number;
+    observation: string;
+}
+
+const EVALUATIONS = [
+    'Evaluation 1',
+    'Evaluation 2',
+    'Evaluation 3',
+    'Evaluation 4',
+    'Evaluation 5',
+    'Evaluation 6',
+];
+
+const Grades: React.FC = () => {
+    // Selection State
+
+    const [selectedEvaluation, setSelectedEvaluation] = useState('');
+    const [selectedClass, setSelectedClass] = useState('');
+    const [selectedStudent, setSelectedStudent] = useState('');
+
+    // Data State
+    const [classes, setClasses] = useState<Class[]>([]);
+    const [students, setStudents] = useState<Student[]>([]);
+    const [gradeEntries, setGradeEntries] = useState<GradeEntry[]>([]);
+
+    // UI State
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [showTable, setShowTable] = useState(false);
+    const [activeTab, setActiveTab] = useState(0);
+
+    // Print Tab State
+    const [printEvaluation, setPrintEvaluation] = useState('');
+    const [printClass, setPrintClass] = useState('');
+    const [printStudents, setPrintStudents] = useState<Student[]>([]);
+    const [showPrintTable, setShowPrintTable] = useState(false);
+    const [printError, setPrintError] = useState('');
+
+    const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+        setActiveTab(newValue);
+    };
+
+    const handlePrintValidate = async () => {
+        if (!printEvaluation || !printClass) {
+            setPrintError('Veuillez sélectionner une évaluation et une classe.');
+            return;
+        }
+        setPrintError('');
+        setLoading(true);
+        try {
+            // Reuse fetchStudents logic but for the print tab
+            const response = await api.get('/students');
+            const classStudents = response.data.filter((s: any) => s.classe_id === Number(printClass));
+            setPrintStudents(classStudents);
+            setShowPrintTable(true);
+        } catch (err) {
+            console.error('Error fetching students for print', err);
+            setPrintError('Erreur lors du chargement des élèves.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchClasses();
+    }, []);
+
+    useEffect(() => {
+        if (selectedClass) {
+            fetchStudents(selectedClass);
+        } else {
+            setStudents([]);
+            setSelectedStudent('');
+        }
+    }, [selectedClass]);
+
+    const fetchClasses = async () => {
+        try {
+            const response = await api.get('/classes');
+            setClasses(response.data);
+        } catch (err) {
+            console.error('Error fetching classes', err);
+        }
+    };
+
+    const fetchStudents = async (classId: string) => {
+        try {
+            // Fetch all students and filter by class (or ideally have an endpoint for students by class)
+            // For now, assuming /students returns all and we filter, or using a specific endpoint if available.
+            // Based on previous code, /students returns all.
+            const response = await api.get('/students');
+            const classStudents = response.data.filter((s: any) => s.classe_id === Number(classId));
+            setStudents(classStudents);
+        } catch (err) {
+            console.error('Error fetching students', err);
+        }
+    };
+
+    const handleValidate = async () => {
+        if (!selectedEvaluation || !selectedClass || !selectedStudent) {
+            setError('Veuillez sélectionner une évaluation, une classe et un élève.');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+        setSuccess('');
+        setShowTable(false);
+
+        try {
+            // 1. Fetch Subjects for the class
+            // Assuming /subjects returns all, we filter by class.
+            const subjectsRes = await api.get('/subjects');
+            const classSubjects = subjectsRes.data.filter((s: any) => s.classe_id === Number(selectedClass));
+
+            // 2. Fetch existing grades for the student
+            const gradesRes = await api.get(`/grades/student/${selectedStudent}`);
+            const existingGrades = gradesRes.data.filter((g: any) => g.trimestre === selectedEvaluation);
+
+            // 3. Merge data
+            const entries: GradeEntry[] = classSubjects.map((subject: Subject) => {
+                const existingGrade = existingGrades.find((g: any) => g.matiere_id === subject.id);
+                const note = existingGrade ? existingGrade.note.toString() : '';
+                const coefficient = subject.coefficient || 1;
+
+                return {
+                    matiere_id: subject.id,
+                    matiere_nom: subject.nom,
+                    coefficient: coefficient,
+                    note: note,
+                    note_finale: calculateFinalGrade(note, coefficient),
+                    observation: calculateObservation(note),
+                };
+            });
+
+            setGradeEntries(entries);
+            setShowTable(true);
+        } catch (err) {
+            console.error('Error fetching data', err);
+            setError('Erreur lors du chargement des données.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const calculateFinalGrade = (noteStr: string, coeff: number): number => {
+        const note = parseFloat(noteStr);
+        if (isNaN(note)) return 0;
+        return note * coeff;
+    };
+
+    const calculateObservation = (noteStr: string): string => {
+        const note = parseFloat(noteStr);
+        if (isNaN(note)) return '';
+
+        if (note >= 0 && note <= 9.9) return 'Médiocre';
+        if (note < 10) return 'Médiocre';
+        if (note <= 12) return 'Assez bien';
+        if (note <= 14) return 'Bien';
+        if (note <= 18) return 'Très bien';
+        return 'Excellent';
+    };
+
+    const handleNoteChange = (index: number, value: string) => {
+        const newEntries = [...gradeEntries];
+        const entry = newEntries[index];
+
+        // Validate input (0-20)
+        const numVal = parseFloat(value);
+        if (value !== '' && (isNaN(numVal) || numVal < 0 || numVal > 20)) {
+            return; // Ignore invalid input
+        }
+
+        entry.note = value;
+        entry.note_finale = calculateFinalGrade(value, entry.coefficient);
+        entry.observation = calculateObservation(value);
+
+        setGradeEntries(newEntries);
+    };
+
+    const handleSave = async () => {
+        setLoading(true);
+        setError('');
+        setSuccess('');
+
+        try {
+            // Filter out entries without notes
+            const gradesToSave = gradeEntries
+                .filter(entry => entry.note !== '')
+                .map(entry => ({
+                    eleve_id: Number(selectedStudent),
+                    matiere_id: entry.matiere_id,
+                    trimestre: selectedEvaluation,
+                    annee_scolaire: '2024-2025', // Hardcoded for now or add a selector
+                    note: parseFloat(entry.note)
+                }));
+
+            if (gradesToSave.length === 0) {
+                setError('Aucune note à enregistrer.');
+                setLoading(false);
+                return;
+            }
+
+            await api.post('/grades/bulk', { grades: gradesToSave });
+            setSuccess('Notes enregistrées avec succès !');
+        } catch (err) {
+            console.error('Error saving grades', err);
+            setError('Erreur lors de l\'enregistrement des notes.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Report Card State
+    const [openReportCard, setOpenReportCard] = useState(false);
+    const [reportData, setReportData] = useState<any>(null);
+
+    const handlePrintClick = async (student: Student) => {
+        console.log('DEBUG: handlePrintClick called', { student, printClass, printEvaluation });
+        if (!printClass || !printEvaluation) {
+            console.error('DEBUG: Missing class or evaluation');
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            // 1. Fetch all grades for the class for this evaluation to calculate rank
+            const classGradesRes = await api.get(`/grades/class/${printClass}?trimestre=${printEvaluation}`);
+            const classGrades = classGradesRes.data;
+
+            // 2. Fetch subjects to get coefficients
+            const subjectsRes = await api.get('/subjects');
+            const classSubjects = subjectsRes.data.filter((s: any) => s.classe_id === Number(printClass));
+
+            // 3. Calculate Averages for ALL students in the class
+            const studentAverages: { studentId: number; average: number }[] = [];
+
+            // Group grades by student
+            const gradesByStudent: { [key: number]: any[] } = {};
+            classGrades.forEach((g: any) => {
+                if (!gradesByStudent[g.eleve_id]) gradesByStudent[g.eleve_id] = [];
+                gradesByStudent[g.eleve_id].push(g);
+            });
+
+            // Calculate average for each student
+            Object.keys(gradesByStudent).forEach(studentIdStr => {
+                const sId = Number(studentIdStr);
+                const sGrades = gradesByStudent[sId];
+
+                let totalPoints = 0;
+                let totalCoeffs = 0;
+
+                classSubjects.forEach((subj: any) => {
+                    const grade = sGrades.find((g: any) => g.matiere_id === subj.id);
+                    const coeff = subj.coefficient || 1;
+                    if (grade) {
+                        totalPoints += parseFloat(grade.note) * coeff;
+                        totalCoeffs += coeff;
+                    } else {
+                        totalPoints += 0;
+                        totalCoeffs += coeff;
+                    }
+                });
+
+                const average = totalCoeffs > 0 ? totalPoints / totalCoeffs : 0;
+                studentAverages.push({ studentId: sId, average });
+            });
+
+            // Sort by average descending to find rank
+            studentAverages.sort((a, b) => b.average - a.average);
+
+            // 4. Find current student's data
+            const currentStudentAvg = studentAverages.find(s => s.studentId === student.id);
+            const rank = studentAverages.findIndex(s => s.studentId === student.id) + 1;
+            const average = currentStudentAvg ? currentStudentAvg.average : 0;
+
+            // 5. Prepare Report Data
+            const studentGrades = classGrades.filter((g: any) => g.eleve_id === student.id);
+            const reportRows = classSubjects.map((subj: any) => {
+                const grade = studentGrades.find((g: any) => g.matiere_id === subj.id);
+                const noteVal = grade ? parseFloat(grade.note) : 0;
+                const coeff = subj.coefficient || 1;
+                return {
+                    matiere: subj.nom,
+                    note: grade ? grade.note : 'N/A', // Display 'N/A' or 0? Image shows numbers.
+                    coefficient: coeff,
+                    noteTotale: grade ? (noteVal * coeff) : 0,
+                    observation: calculateObservation(grade ? grade.note : '0') // Use helper
+                };
+            });
+
+            setReportData({
+                student,
+                evaluation: printEvaluation,
+                rows: reportRows,
+                average: average.toFixed(2),
+                rank,
+                className: classes.find(c => c.id === Number(printClass))?.libelle || ''
+            });
+            setOpenReportCard(true);
+
+        } catch (err) {
+            console.error('Error generating report card', err);
+            setPrintError('Erreur lors de la génération du bulletin.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Box>
+            <div className="modal-overlay no-print" onClick={() => setOpenReportCard(false)}></div>
+
+            {/* Report card container - visible on print, centered on screen */}
+            <div id="report-card-print" className="modal-content-wrapper">
+                <Paper className="print-container" sx={{ width: '210mm', minHeight: '297mm', overflowY: 'auto', p: 4, position: 'relative', mx: 'auto' }}>
+                    <div className="print-content">
+
+                        {/* Header */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'flex-start' }}> {/* Reduced mb */}
+                            <Box>
+                                <Typography variant="body1" fontWeight="bold" sx={{ fontSize: '10pt' }}>LEUANA SCHOOL</Typography>
+                                <Typography variant="body2" sx={{ fontSize: '9pt' }}>+237 690189297</Typography>
+                                <Typography variant="body2" sx={{ fontSize: '9pt' }}>Carrefour BATA Nlongkak</Typography>
+                                <Typography variant="body2" sx={{ fontSize: '9pt' }}>leuanasarl@gmail.com</Typography>
+                            </Box>
+                            <Box>
+                                <Typography variant="h4" color="primary" fontWeight="bold" sx={{ border: '2px solid #008080', px: 1, color: '#008080', fontSize: '1.5rem' }}>
+                                    leu<span style={{ color: 'black' }}>ana</span>
+                                </Typography>
+                            </Box>
+                        </Box>
+
+                        <Typography variant="h5" align="center" fontWeight="bold" sx={{ mb: 2, textTransform: 'uppercase', fontSize: '1.2rem' }}> {/* Reduced mb and font size */}
+                            BULLETIN DE NOTE
+                        </Typography>
+
+                        <Box sx={{ mb: 2 }}> {/* Reduced mb */}
+                            <Typography variant="body1" sx={{ fontSize: '10pt' }}><strong>nom de l'élève :</strong> {reportData.student.nom} {reportData.student.prenom}</Typography>
+                            <Typography variant="body1" sx={{ fontSize: '10pt' }}><strong>classe :</strong> {reportData.className}</Typography>
+                            <Typography variant="body1" sx={{ fontSize: '10pt' }}><strong>évaluation :</strong> {reportData.evaluation}</Typography>
+                        </Box>
+
+                        {/* Table */}
+                        <TableContainer component={Paper} variant="outlined" sx={{ mb: 3, border: '1px solid black' }}>
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell sx={{ borderRight: '1px solid #ccc', fontWeight: 'bold' }}>matière</TableCell>
+                                        <TableCell align="center" sx={{ borderRight: '1px solid #ccc', fontWeight: 'bold' }}>note</TableCell>
+                                        <TableCell align="center" sx={{ borderRight: '1px solid #ccc', fontWeight: 'bold' }}>coefficient</TableCell>
+                                        <TableCell align="center" sx={{ borderRight: '1px solid #ccc', fontWeight: 'bold' }}>note totale</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>observation</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {reportData.rows.map((row: any, idx: number) => (
+                                        <TableRow key={idx} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#FFF5F0' } }}>
+                                            <TableCell sx={{ borderRight: '1px solid #ccc' }}>{row.matiere}</TableCell>
+                                            <TableCell align="center" sx={{ borderRight: '1px solid #ccc' }}>{row.note}</TableCell>
+                                            <TableCell align="center" sx={{ borderRight: '1px solid #ccc' }}>{row.coefficient}</TableCell>
+                                            <TableCell align="center" sx={{ borderRight: '1px solid #ccc' }}>{row.noteTotale}</TableCell>
+                                            <TableCell align="center">{row.observation}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {/* Fill remaining rows to reach 16 lines */}
+                                    {Array.from({ length: Math.max(0, 16 - reportData.rows.length) }).map((_, idx) => (
+                                        <TableRow key={`empty-${idx}`} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#FFF5F0' } }}>
+                                            <TableCell sx={{ borderRight: '1px solid #ccc' }}>&nbsp;</TableCell>
+                                            <TableCell align="center" sx={{ borderRight: '1px solid #ccc' }}>&nbsp;</TableCell>
+                                            <TableCell align="center" sx={{ borderRight: '1px solid #ccc' }}>&nbsp;</TableCell>
+                                            <TableCell align="center" sx={{ borderRight: '1px solid #ccc' }}>&nbsp;</TableCell>
+                                            <TableCell align="center">&nbsp;</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+
+                        {/* Footer Summary */}
+                        <Box sx={{ border: '1px solid black', p: 0, mb: 1 }}>
+                            <Grid container>
+                                <Grid size={{ xs: 2 }} sx={{ p: 1, borderRight: '1px solid black', bgcolor: '#FFF5F0' }}>
+                                    <Typography align="center">moyenne</Typography>
+                                </Grid>
+                                <Grid size={{ xs: 2 }} sx={{ p: 1, borderRight: '1px solid black' }}>
+                                    <Typography align="center" fontWeight="bold">{reportData.average}</Typography>
+                                </Grid>
+                                <Grid size={{ xs: 2 }} sx={{ p: 1, borderRight: '1px solid black', bgcolor: '#FFF5F0' }}>
+                                    <Typography align="center">rang</Typography>
+                                </Grid>
+                                <Grid size={{ xs: 2 }} sx={{ p: 1, borderRight: '1px solid black' }}>
+                                    <Typography align="center" fontWeight="bold">{reportData.rank}e</Typography>
+                                </Grid>
+                                <Grid size={{ xs: 2 }} sx={{ p: 1, borderRight: '1px solid black', bgcolor: '#FFF5F0' }}>
+                                    <Typography align="center">observation</Typography>
+                                </Grid>
+                                <Grid size={{ xs: 2 }} sx={{ p: 1 }}>
+                                    <Typography align="center">{calculateObservation(reportData.average)}</Typography>
+                                </Grid>
+                            </Grid>
+                        </Box>
+
+                        {/* Signature du principal */}
+                        <Box sx={{ mt: 2, textAlign: 'right', pr: 4 }}>
+                            <Typography variant="subtitle1" sx={{ fontSize: '11pt' }}>Le principal</Typography>
+                        </Box>
+                    </div>
+
+                    {/* Footer - positioned at absolute bottom of page */}
+                    <Box className="print-footer" sx={{ position: 'absolute', bottom: '5mm', left: '10mm', textAlign: 'left' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '9pt' }}>by LEUANA TECHNOLOGY</Typography>
+                    </Box>
+                </Paper>
+
+                {/* Close Icon - top right outside paper */}
+                <IconButton
+                    className="no-print"
+                    onClick={() => setOpenReportCard(false)}
+                    sx={{
+                        position: 'fixed',
+                        right: '20px',
+                        top: '80px',
+                        bgcolor: 'error.main',
+                        color: 'white',
+                        '&:hover': {
+                            bgcolor: 'error.dark',
+                        },
+                        width: 48,
+                        height: 48,
+                        boxShadow: 3,
+                        zIndex: 1000001
+                    }}
+                >
+                    <CloseIcon fontSize="medium" />
+                </IconButton>
+
+                {/* Print Icon - floating on the right side */}
+                <IconButton
+                    className="no-print"
+                    onClick={() => window.print()}
+                    sx={{
+                        position: 'fixed',
+                        right: '20px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        bgcolor: 'primary.main',
+                        color: 'white',
+                        '&:hover': {
+                            bgcolor: 'primary.dark',
+                        },
+                        width: 56,
+                        height: 56,
+                        boxShadow: 3,
+                        zIndex: 1000000
+                    }}
+                >
+                    <PrintIcon fontSize="large" />
+                </IconButton>
+            </div>
+        </>,
+        document.body
+    )
+}
+
+            <Typography variant="h4" sx={{ mb: 3 }}>Gestion des Notes</Typography>
+
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+                <Tabs
+                    value={activeTab}
+                    onChange={handleTabChange}
+                    sx={{
+                        '& .MuiTabs-indicator': {
+                            backgroundColor: '#ff6f00',
+                        },
+                    }}
+                >
+                    <Tab
+                        label="Notes"
+                        sx={{
+                            '&.Mui-selected': { color: '#ff6f00' },
+                            color: 'text.secondary'
+                        }}
+                    />
+                    <Tab
+                        label="Impression"
+                        sx={{
+                            '&.Mui-selected': { color: '#ff6f00' },
+                            color: 'text.secondary'
+                        }}
+                    />
+                </Tabs>
+            </Box>
+
+            <div role="tabpanel" hidden={activeTab !== 0}>
+                {activeTab === 0 && (
+                    <Box>
+                        <Paper sx={{ p: 3, mb: 3 }}>
+                            <Grid container spacing={2} alignItems="center">
+                                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                                    <TextField
+                                        select
+                                        label="Evaluation"
+                                        fullWidth
+                                        value={selectedEvaluation}
+                                        onChange={(e) => setSelectedEvaluation(e.target.value)}
+                                        SelectProps={{ displayEmpty: true }}
+                                        InputLabelProps={{ shrink: true }}
+                                    >
+                                        <MenuItem value="">
+                                            Sélectionner une évaluation
+                                        </MenuItem>
+                                        {EVALUATIONS.map((evalName) => (
+                                            <MenuItem key={evalName} value={evalName}>{evalName}</MenuItem>
+                                        ))}
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                                    <TextField
+                                        select
+                                        label="Classe"
+                                        fullWidth
+                                        value={selectedClass}
+                                        onChange={(e) => setSelectedClass(e.target.value)}
+                                        SelectProps={{ displayEmpty: true }}
+                                        InputLabelProps={{ shrink: true }}
+                                    >
+                                        <MenuItem value="">
+                                            Sélectionner une classe
+                                        </MenuItem>
+                                        {classes.map((cls) => (
+                                            <MenuItem key={cls.id} value={cls.id.toString()}>{cls.libelle}</MenuItem>
+                                        ))}
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                                    <TextField
+                                        select
+                                        label="Élève"
+                                        fullWidth
+                                        value={selectedStudent}
+                                        onChange={(e) => setSelectedStudent(e.target.value)}
+                                        disabled={!selectedClass}
+                                        SelectProps={{ displayEmpty: true }}
+                                        InputLabelProps={{ shrink: true }}
+                                    >
+                                        <MenuItem value="">
+                                            Sélectionner un élève
+                                        </MenuItem>
+                                        {students.map((student) => (
+                                            <MenuItem key={student.id} value={student.id.toString()}>
+                                                {student.nom} {student.prenom}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                                    <Button
+                                        variant="contained"
+                                        color="warning"
+                                        fullWidth
+                                        size="large"
+                                        onClick={handleValidate}
+                                        disabled={loading}
+                                        sx={{ height: '56px', width: '100%' }}
+                                    >
+                                        Valider
+                                    </Button>
+                                </Grid>
+                            </Grid>
+                        </Paper>
+
+                        {/* Feedback */}
+                        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+                        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+
+                        {/* Middle Section: Table */}
+                        {showTable && (
+                            <>
+                                <TableContainer component={Paper} sx={{ mb: 3 }}>
+                                    <Table>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>Matière</TableCell>
+                                                <TableCell>Note/20</TableCell>
+                                                <TableCell>Coefficient</TableCell>
+                                                <TableCell>Note Finale</TableCell>
+                                                <TableCell>Observation</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {gradeEntries.map((entry, index) => (
+                                                <TableRow key={entry.matiere_id} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#FFF5F0' } }}>
+                                                    <TableCell>{entry.matiere_nom}</TableCell>
+                                                    <TableCell>
+                                                        <TextField
+                                                            type="number"
+                                                            value={entry.note}
+                                                            onChange={(e) => handleNoteChange(index, e.target.value)}
+                                                            inputProps={{ min: 0, max: 20, step: 0.5 }}
+                                                            size="small"
+                                                            sx={{ width: 100 }}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>{entry.coefficient}</TableCell>
+                                                    <TableCell>{entry.note_finale || ''}</TableCell>
+                                                    <TableCell>{entry.observation}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+
+                                {/* Bottom Section: Save Button */}
+                                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                    <Button
+                                        variant="contained"
+                                        color="warning"
+                                        size="large"
+                                        onClick={handleSave}
+                                        disabled={loading}
+                                    >
+                                        Enregistrer
+                                    </Button>
+                                </Box>
+                            </>
+                        )}
+                    </Box>
+                )}
+            </div>
+
+            <div role="tabpanel" hidden={activeTab !== 1}>
+                {activeTab === 1 && (
+                    <Box>
+                        <Paper sx={{ p: 3, mb: 3 }}>
+                            <Grid container spacing={2} alignItems="center">
+                                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                                    <TextField
+                                        select
+                                        label="Evaluation"
+                                        fullWidth
+                                        value={printEvaluation}
+                                        onChange={(e) => setPrintEvaluation(e.target.value)}
+                                        SelectProps={{ displayEmpty: true }}
+                                        InputLabelProps={{ shrink: true }}
+                                    >
+                                        <MenuItem value="">
+                                            Sélectionner une évaluation
+                                        </MenuItem>
+                                        {EVALUATIONS.map((evalName) => (
+                                            <MenuItem key={evalName} value={evalName}>{evalName}</MenuItem>
+                                        ))}
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                                    <TextField
+                                        select
+                                        label="Classe"
+                                        fullWidth
+                                        value={printClass}
+                                        onChange={(e) => setPrintClass(e.target.value)}
+                                        SelectProps={{ displayEmpty: true }}
+                                        InputLabelProps={{ shrink: true }}
+                                    >
+                                        <MenuItem value="">
+                                            Sélectionner une classe
+                                        </MenuItem>
+                                        {classes.map((cls) => (
+                                            <MenuItem key={cls.id} value={cls.id.toString()}>{cls.libelle}</MenuItem>
+                                        ))}
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                                    <Button
+                                        variant="contained"
+                                        color="warning"
+                                        fullWidth
+                                        size="large"
+                                        onClick={handlePrintValidate}
+                                        disabled={loading}
+                                        sx={{ height: '56px', width: '100%' }}
+                                    >
+                                        Valider
+                                    </Button>
+                                </Grid>
+                            </Grid>
+                        </Paper>
+
+                        {/* Feedback for Print Tab */}
+                        {printError && <Alert severity="error" sx={{ mb: 2 }}>{printError}</Alert>}
+
+                        {showPrintTable && (
+                            <>
+                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                                    <Button
+                                        variant="contained"
+                                        color="warning"
+                                        onClick={() => console.log('Imprimer la sélection')}
+                                    >
+                                        Imprimer la sélection
+                                    </Button>
+                                </Box>
+
+                                <TableContainer component={Paper} sx={{ mb: 3 }}>
+                                    <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+                                        <Typography variant="h6">Liste des élèves</Typography>
+                                    </Box>
+                                    <Table>
+                                        <TableBody>
+                                            {printStudents.map((student) => (
+                                                <TableRow key={student.id} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#FFF5F0' } }}>
+                                                    <TableCell>{student.nom} {student.prenom}</TableCell>
+                                                    <TableCell align="right">
+                                                        <Button
+                                                            variant="contained"
+                                                            color="warning"
+                                                            size="small"
+                                                            onClick={() => handlePrintClick(student)}
+                                                        >
+                                                            Imprimer
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </>
+                        )}
+                    </Box>
+                )}
+            </div>
+        </Box >
+    );
+};
+
+export default Grades;
+

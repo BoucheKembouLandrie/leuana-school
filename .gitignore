@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment variables
+.env
+*.env.local
+*.env.production
+
+# Build outputs
+dist/
+build/
+*/dist/
+*/build/
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Uploads (user-generated content - can be large)
+uploads/
+*/uploads/
+
+# Database dumps
+*.sql
+*.sqlite
+
+# Test files
+coverage/
+*.test.js.snap
+
+# Temporary files
+*.tmp
+.cache/
+
+# Excel exports (generated files)
+*.xlsx

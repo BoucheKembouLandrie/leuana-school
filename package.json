@@ -1,0 +1,22 @@
+{
+    "name": "leuana-school",
+    "version": "1.0.0",
+    "description": "Système de gestion scolaire Leuana School",
+    "private": true,
+    "scripts": {
+        "install:all": "cd backend && npm install && cd ../frontend && npm install",
+        "dev:backend": "cd backend && npm run dev",
+        "dev:frontend": "cd frontend && npm run dev",
+        "build:backend": "cd backend && npm run build",
+        "build:frontend": "cd frontend && npm run build",
+        "build:all": "npm run build:backend && npm run build:frontend"
+    },
+    "keywords": [
+        "school",
+        "management",
+        "education",
+        "leuana"
+    ],
+    "author": "Leuana School",
+    "license": "PROPRIETARY"
+}

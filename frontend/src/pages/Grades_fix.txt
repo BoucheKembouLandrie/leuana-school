@@ -1,0 +1,119 @@
+INSTRUCTIONS POUR CORRIGER LE FICHIER Grades.tsx:
+
+Le fichier est corrompu à partir de la ligne 359. Voici ce qu'il faut faire:
+
+1. SUPPRIMER les lignes 361-510 (tout le code du modal mal placé)
+
+2. REMPLACER la ligne 359 par:
+
+```tsx
+    return (
+        <Box>
+            {/* Report Card Dialog */}
+            {openReportCard && reportData && createPortal(
+                <>
+                    {/* Print Styles */}
+                    <style>{`
+                        @media print {
+                            #root {
+                                display: none !important;
+                            }
+                            
+                            body > *:not(#report-card-print):not(style) {
+                                display: none !important;
+                            }
+
+                            #report-card-print {
+                                display: block !important;
+                                position: absolute !important;
+                                top: 0 !important;
+                                left: 0 !important;
+                                width: 100% !important;
+                                height: auto !important;
+                                background: white !important;
+                                z-index: 99999 !important;
+                            }
+
+                            .no-print {
+                                display: none !important;
+                            }
+
+                            @page {
+                                size: A4;
+                                margin: 10mm;
+                            }
+
+                            .print-container {
+                                width: 100% !important;
+                                box-shadow: none !important;
+                                page-break-inside: avoid !important;
+                            }
+
+                            .modal-content-wrapper {
+                                position: static !important;
+                                transform: none !important;
+                                width: 100% !important;
+                                max-width: none !important;
+                            }
+                        }
+
+                        .modal-overlay {
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 100%;
+                            background-color: rgba(0,0,0,0.5);
+                            z-index: 999998 !important;
+                        }
+                        
+                        .modal-content-wrapper {
+                            position: fixed;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            z-index: 999999 !important;
+                            width: auto;
+                            max-width: 90vw;
+                            max-height: 90vh;
+                            overflow: visible;
+                        }
+                        
+                        .modal-content-wrapper .print-container {
+                            transform: scale(0.7);
+                            transform-origin: top center;
+                        }
+                    `}</style>
+
+                    <div className="modal-overlay no-print" onClick={() => setOpenReportCard(false)}></div>
+
+                    <div id="report-card-print" className="modal-content-wrapper">
+                        <Paper className="print-container" sx={{ width: '210mm', minHeight: '297mm', overflowY: 'auto', p: 4, position: 'relative', mx: 'auto' }}>
+                            <div className="print-content">
+                                {/* LE CONTENU DU BULLETIN EST DÉJÀ PRÉSENT DANS LE FICHIER - NE PAS LE DUPLIQUER */}
+                                {/* Il commence à la ligne ~368 et se termine vers la ligne ~500 */}
+```
+
+3. Le reste du code (le contenu du bulletin, les icônes, etc.) est déjà présent dans le fichier.
+
+4. Assurez-vous que le modal se ferme correctement avec:
+```tsx
+                        </Paper>
+                        
+                        <IconButton className="no-print" onClick={() => setOpenReportCard(false)} sx={{...}}>
+                            <CloseIcon fontSize="medium" />
+                        </IconButton>
+
+                        <IconButton className="no-print" onClick={() => window.print()} sx={{...}}>
+                            <PrintIcon fontSize="large" />
+                        </IconButton>
+                    </div>
+                </>,
+                document.body
+            ))}
+
+            <Typography variant="h4" sx={{ mb: 3 }}>Gestion des Notes</Typography>
+            {/* Le reste du code de la page continue normalement */}
+```
+
+Le problème principal est que le code du modal (lignes 361-510) est directement dans le return au lieu d'être conditionnel.
