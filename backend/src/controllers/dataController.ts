@@ -40,6 +40,11 @@ const MODELS_IMPORT_ORDER = [
 export const exportData = async (req: Request, res: Response) => {
     try {
         console.log('Starting Export Process...');
+        const schoolYearId = req.headers['x-school-year-id'];
+        if (!schoolYearId) {
+            return res.status(400).json({ message: 'School Year ID is required for export' });
+        }
+
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Leuana School System';
         workbook.created = new Date();
@@ -47,28 +52,41 @@ export const exportData = async (req: Request, res: Response) => {
         for (const { name, model } of MODELS_IMPORT_ORDER) {
             try {
                 if (!model) {
-                    console.error(`Export Error: Model ${name} is UNDEFINED. Check circular dependencies in models/index.ts`);
+                    console.error(`Export Error: Model ${name} is UNDEFINED.`);
+                    continue;
+                }
+
+                // Skip global models that shouldn't be exported per year, OR export them fully?
+                // User said "gestion des donnees doit exporter... uniquement de l'annee scolaire en cours"
+                // SchoolSettings and User are global.
+                if (name === 'SchoolSettings' || name === 'User') {
                     continue;
                 }
 
                 console.log(`Processing export for ${name}...`);
-                const data = await (model as any).findAll({ raw: true });
+
+                // Add filter
+                const whereClause: any = { school_year_id: schoolYearId };
+                const data = await (model as any).findAll({ where: whereClause, raw: true });
+
                 console.log(`  Found ${data.length} records for ${name}`);
 
                 if (data.length > 0) {
                     const sheet = workbook.addWorksheet(name);
+                    // Filter out school_year_id column from export? Or keep it?
+                    // Keeping it is safer for re-import logic if we want to validate, 
+                    // BUT for import into *current* year, we ignore it anyway.
+                    // Let's exclude created/updatedAt to keep file clean.
+                    const columns = Object.keys(data[0])
+                        .filter(key => !['createdAt', 'updatedAt'].includes(key))
+                        .map(key => ({ header: key, key, width: 20 }));
 
-                    // Get headers from all unique keys across records to ensure we don't miss fields if first record is sparse?
-                    // For now, simple approach: keys of first record.
-                    const columns = Object.keys(data[0]).map(key => ({ header: key, key, width: 20 }));
                     sheet.columns = columns;
-
                     sheet.addRows(data);
                     console.log(`  Added sheet ${name}.`);
                 }
             } catch (modelErr) {
                 console.error(`Error exporting model ${name}:`, modelErr);
-                // Continue to next model so one failure doesn't kill the whole export
             }
         }
 
@@ -77,12 +95,10 @@ export const exportData = async (req: Request, res: Response) => {
         res.setHeader('Content-Disposition', 'attachment; filename=school_data.xlsx');
 
         await workbook.xlsx.write(res);
-        console.log('Export response sent.');
         res.end();
 
     } catch (error) {
         console.error('Fatal Export error:', error);
-        // If headers not sent, send json error
         if (!res.headersSent) {
             res.status(500).json({ message: 'Error exporting data', error });
         }
@@ -94,9 +110,13 @@ export const importData = async (req: Request, res: Response) => {
         return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    // Get import mode: 'skip' | 'update' | 'duplicate'
+    const schoolYearId = req.headers['x-school-year-id'];
+    if (!schoolYearId) {
+        return res.status(400).json({ message: 'School Year ID is required for import' });
+    }
+
     const mode = req.body.mode || 'update';
-    console.log(`Import mode: ${mode}`);
+    console.log(`Import mode: ${mode}, Target School Year: ${schoolYearId}`);
 
     const t = await sequelize.transaction();
 
@@ -104,15 +124,16 @@ export const importData = async (req: Request, res: Response) => {
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(req.file.buffer as any);
 
-        // Disable foreign key checks for bulk import to avoid ordering issues if strict order isn't perfect
-        // However, standard SQL way is: SET FOREIGN_KEY_CHECKS = 0;
         await sequelize.query('SET FOREIGN_KEY_CHECKS = 0', { transaction: t });
 
         for (const { name, model } of MODELS_IMPORT_ORDER) {
+
+            // Skip global models
+            if (name === 'SchoolSettings' || name === 'User') continue;
+
             const sheet = workbook.getWorksheet(name);
             if (sheet) {
                 const records: any[] = [];
-                // ExcelJS iterates 1-based. Row 1 is header.
                 const headers: string[] = [];
 
                 sheet.getRow(1).eachCell((cell, colNumber) => {
@@ -120,46 +141,49 @@ export const importData = async (req: Request, res: Response) => {
                 });
 
                 sheet.eachRow((row, rowNumber) => {
-                    if (rowNumber === 1) return; // Skip header
+                    if (rowNumber === 1) return;
                     const record: any = {};
                     row.eachCell((cell, colNumber) => {
                         const header = headers[colNumber];
                         if (header) {
-                            // Handle potential date conversions or JSON parsing if needed
-                            // ExcelJS might return an object for rich text or formula. We want value.
                             let value = cell.value;
-
-                            // Simple text handling. For complex types, might need more checks.
                             if (typeof value === 'object' && value !== null && 'text' in value) {
                                 value = (value as any).text;
                             }
-
                             record[header] = value;
                         }
                     });
+
+                    // FORCE school_year_id to current year
+                    record.school_year_id = schoolYearId;
+
                     records.push(record);
                 });
 
                 if (records.length > 0) {
-                    console.log(`Importing ${records.length} records for ${name} with mode: ${mode}`);
+                    console.log(`Importing ${records.length} records for ${name} into Year ${schoolYearId}`);
 
                     if (mode === 'duplicate') {
-                        // For duplicate mode: Remove IDs to let database generate new ones
                         records.forEach(r => {
                             delete r.id;
-                            // Also remove createdAt/updatedAt to let DB handle them
                             delete r.createdAt;
                             delete r.updatedAt;
+                            r.school_year_id = schoolYearId; // Ensure it's set
                         });
                         await (model as any).bulkCreate(records, { transaction: t });
                     } else if (mode === 'skip') {
-                        // For skip mode: Ignore duplicates based on primary key
                         await (model as any).bulkCreate(records, {
                             ignoreDuplicates: true,
                             transaction: t
                         });
-                    } else { // 'update' mode (default)
-                        // For update mode: Update existing records with same ID
+                    } else { // 'update'
+                        // Update needs to handle ID conflicts. If importing from same year, ID matches.
+                        // If importing from diff year, IDs might conflict if we keep them.
+                        // User requirement: "importer... uniquement de l'annee scolaire en cours" logic usually implies
+                        // bringing data INTO this year. 
+                        // If we keep IDs, we risk clashing with existing IDs if they are auto-increment global.
+                        // Ideally, we should Map old IDs to New IDs if it's a cross-year import, which is complex.
+                        // For now, assuming standard Restore/Backup within same context or simple import:
                         await (model as any).bulkCreate(records, {
                             updateOnDuplicate: Object.keys(records[0]),
                             transaction: t
@@ -182,29 +206,33 @@ export const importData = async (req: Request, res: Response) => {
 };
 
 export const resetData = async (req: Request, res: Response) => {
+    const schoolYearId = req.headers['x-school-year-id'];
+    if (!schoolYearId) {
+        return res.status(400).json({ message: 'School Year ID is required for reset' });
+    }
+
     const t = await sequelize.transaction();
 
     try {
-        // Disable FK checks to truncate tables freely
         await sequelize.query('SET FOREIGN_KEY_CHECKS = 0', { transaction: t });
 
-        // Reverse order is safer usually, but with FK checks off, it doesn't matter much.
-        // We use the same list.
-        for (const { model } of MODELS_IMPORT_ORDER) {
-            await (model as any).destroy({ where: {}, truncate: true, transaction: t });
+        console.log(`Resetting data for School Year ID: ${schoolYearId}`);
+
+        for (const { name, model } of MODELS_IMPORT_ORDER) {
+            // Skip global models
+            if (name === 'SchoolSettings' || name === 'User') continue;
+
+            const deleted = await (model as any).destroy({
+                where: { school_year_id: schoolYearId },
+                transaction: t
+            });
+            console.log(`Deleted ${deleted} records from ${name}`);
         }
 
         await sequelize.query('SET FOREIGN_KEY_CHECKS = 1', { transaction: t });
         await t.commit();
 
-        // Optional: Re-seed default settings or admin user if needed? 
-        // The user said "vider la base de données". Usually implies a fresh state. 
-        // We might want to keep the Admin user so they don't get locked out?
-        // Requirement says "Supprimer... formater toutes les donnees". 
-        // I will strictly follow that. If they delete everything, they might need to use 'create-admin' script again or register.
-        // But for safety, let's assume they want a clean slate.
-
-        res.json({ message: 'Database reset successfully' });
+        res.json({ message: 'Database reset successfully for current school year' });
 
     } catch (error) {
         await t.rollback();

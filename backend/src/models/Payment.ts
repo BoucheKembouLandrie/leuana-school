@@ -9,6 +9,7 @@ class Payment extends Model {
     public date_paiement!: Date;
     public motif!: string;
     public reste!: number;
+    public school_year_id!: number;
 }
 
 Payment.init(
@@ -42,6 +43,14 @@ Payment.init(
             type: DataTypes.FLOAT,
             allowNull: false,
             defaultValue: 0,
+        },
+        school_year_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'school_years',
+                key: 'id',
+            },
         },
     },
     {

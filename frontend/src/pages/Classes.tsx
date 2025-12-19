@@ -24,6 +24,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import api from '../services/api';
+import { useSchoolYear } from '../contexts/SchoolYearContext';
 
 const schema = z.object({
     libelle: z.string().min(1, 'Libellé requis'),
@@ -46,6 +47,7 @@ interface Class {
 }
 
 const Classes: React.FC = () => {
+    const { currentYear } = useSchoolYear();
     const [classes, setClasses] = useState<Class[]>([]);
     const [open, setOpen] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -134,7 +136,15 @@ const Classes: React.FC = () => {
                 <Button
                     variant="contained"
                     startIcon={<Add />}
-                    onClick={() => setOpen(true)}
+                    onClick={() => {
+                        reset({
+                            libelle: '',
+                            niveau: '',
+                            annee: currentYear?.name || '',
+                            pension: '0',
+                        });
+                        setOpen(true);
+                    }}
                     sx={{ backgroundColor: '#e65100', '&:hover': { backgroundColor: '#d84315' } }}
                 >
                     Nouvelle classe

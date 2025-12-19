@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, IconButton } from '@mui/material';
-import { Menu as MenuIcon, Dashboard, People, School, Payment, EventAvailable, Grade, Settings, ExitToApp, Book, AccountBalance, AccountCircle, Assignment, PriceChange } from '@mui/icons-material';
+import { Menu as MenuIcon, Dashboard, People, School, Payment, EventAvailable, Grade, Settings, ExitToApp, Book, AccountBalance, AccountCircle, Assignment, PriceChange, DateRange } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../App';
+import SchoolYearSelector from '../components/SchoolYearSelector';
 
 import { useSettings } from '../contexts/SettingsContext';
 import { BASE_URL } from '../config';
@@ -13,9 +14,10 @@ const drawerWidth = 240;
 const menuItems = [
     { text: 'Dashboard', title: 'Tableau de Bord', icon: <Dashboard />, path: '/', color: '#1976d2' }, // Blue
     { text: 'Classes', title: 'Gestion des Classes', icon: <AccountBalance />, path: '/classes', color: '#e65100' }, // Orange
+    { text: 'Staff', title: 'Gestion du Personnel', icon: <People />, path: '/staff', color: '#c2185b' }, // Pink (Admin color)
     { text: 'Matières', title: 'Gestion des Matières', icon: <Book />, path: '/subjects', color: '#00897b' }, // Teal
     { text: 'Élèves', title: 'Gestion des Élèves', icon: <School />, path: '/students', color: '#5e35b1' }, // Deep Purple
-    { text: 'Staff', title: 'Gestion du Personnel', icon: <People />, path: '/staff', color: '#c2185b' }, // Pink (Admin color)
+    { text: 'Planning', title: 'Planning Scolaire', icon: <DateRange />, path: '/planning', color: '#2e7d32' }, // Green
     { text: 'Examens', title: 'Gestion des Examens', icon: <Assignment />, path: '/examens', color: '#d32f2f' }, // Red
     { text: 'Notes', title: 'Gestion des Notes', icon: <Grade />, path: '/grades', color: '#ff6f00' }, // Amber
     { text: 'Pensions', title: 'Gestion des Pensions', icon: <Payment />, path: '/payments', color: '#fbc02d' }, // Yellow
@@ -58,6 +60,7 @@ const DashboardLayout: React.FC = () => {
             '/settings': 'parametres',
             '/administration': 'administration',
             '/reports': 'rapports',
+            '/planning': 'planning',
         };
         return pathMap[path] || path.substring(1);
     };
@@ -70,6 +73,7 @@ const DashboardLayout: React.FC = () => {
 
     const drawer = (
         <div>
+            <SchoolYearSelector />
             <Toolbar sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
                 <img
                     src={settings?.logo_url ? `${BASE_URL}${settings.logo_url}` : "/logo.jpg"}

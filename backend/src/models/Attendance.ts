@@ -9,6 +9,7 @@ class Attendance extends Model {
     public statut!: 'present' | 'absent' | 'retard' | 'excuse';
     public motif!: string;
     public time!: string;
+    public school_year_id!: number;
 }
 
 Attendance.init(
@@ -41,6 +42,14 @@ Attendance.init(
         time: {
             type: DataTypes.STRING,
             allowNull: true,
+        },
+        school_year_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'school_years',
+                key: 'id',
+            },
         },
     },
     {

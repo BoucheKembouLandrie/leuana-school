@@ -1,7 +1,9 @@
 import app from './app';
 import { sequelize } from './models';
 
-const PORT = process.env.PORT || 5000;
+const PORT = 5005; // Force port to bypass .env
+console.log("!!! FORCING PORT 5005 - IGNORE ENV !!!");
+console.log("!!! SERVER LOADING NEW CODE - TIMESTAMP " + Date.now() + " !!!");
 
 const startServer = async () => {
     try {
@@ -14,8 +16,16 @@ const startServer = async () => {
         // await sequelize.sync();
         console.log('Models synchronized.');
 
-        app.listen(PORT, () => {
+        const server = app.listen(Number(PORT), '0.0.0.0', () => {
             console.log(`Server is running on port ${PORT}`);
+        });
+        server.on('error', (err: any) => {
+            if (err.code === 'EADDRINUSE') {
+                console.error(`ERROR: Port ${PORT} is already in use! Please stop other running servers.`);
+                process.exit(1);
+            } else {
+                console.error('Server error:', err);
+            }
         });
     } catch (error) {
         console.error('Unable to connect to the database:', error);

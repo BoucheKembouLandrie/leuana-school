@@ -10,6 +10,7 @@ class Grade extends Model {
     public note!: number;
     public trimestre!: string;
     public annee_scolaire!: string;
+    public school_year_id!: number;
 }
 
 Grade.init(
@@ -50,6 +51,14 @@ Grade.init(
         annee_scolaire: {
             type: DataTypes.STRING,
             allowNull: false,
+        },
+        school_year_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'school_years',
+                key: 'id',
+            },
         },
     },
     {

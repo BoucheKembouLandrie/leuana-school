@@ -3,7 +3,13 @@ import Evaluation from '../models/Evaluation';
 
 export const getAllEvaluations = async (req: Request, res: Response) => {
     try {
+        const schoolYearId = req.headers['x-school-year-id'];
+        if (!schoolYearId) {
+            return res.status(400).json({ message: 'School Year ID is required' });
+        }
+
         const evaluations = await Evaluation.findAll({
+            where: { school_year_id: schoolYearId },
             order: [['ordre', 'ASC']]
         });
         res.json(evaluations);
@@ -15,12 +21,23 @@ export const getAllEvaluations = async (req: Request, res: Response) => {
 export const createEvaluation = async (req: Request, res: Response) => {
     try {
         const { nom, date_debut, date_fin } = req.body;
+        const schoolYearId = req.headers['x-school-year-id'];
 
-        // Auto-calculate ordre based on existing evaluations
-        const count = await Evaluation.count();
+        if (!schoolYearId) {
+            return res.status(400).json({ message: 'School Year ID is required' });
+        }
+
+        // Auto-calculate ordre based on existing evaluations FOR THIS YEAR
+        const count = await Evaluation.count({ where: { school_year_id: schoolYearId } });
         const ordre = count + 1;
 
-        const evaluation = await Evaluation.create({ nom, date_debut, date_fin, ordre });
+        const evaluation = await Evaluation.create({
+            nom,
+            date_debut,
+            date_fin,
+            ordre,
+            school_year_id: schoolYearId
+        });
         res.status(201).json(evaluation);
     } catch (error) {
         console.error('Error creating evaluation:', error);

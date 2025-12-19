@@ -6,7 +6,13 @@ import { generateMatricule } from '../utils/matriculeGenerator';
 export const getAllStudents = async (req: Request, res: Response) => {
     try {
         const { classe_id } = req.query;
-        const whereClause: any = {};
+        const schoolYearId = req.headers['x-school-year-id'];
+
+        if (!schoolYearId) {
+            return res.status(400).json({ message: 'School Year ID is required' });
+        }
+
+        const whereClause: any = { school_year_id: schoolYearId };
 
         if (classe_id) {
             whereClause.classe_id = classe_id;
@@ -24,8 +30,19 @@ export const getAllStudents = async (req: Request, res: Response) => {
 
 export const getStudentById = async (req: Request, res: Response) => {
     try {
-        const student = await Student.findByPk(req.params.id, { include: [{ model: Class, as: 'class' }] });
-        if (!student) return res.status(404).json({ message: 'Student not found' });
+        const schoolYearId = req.headers['x-school-year-id'];
+        const whereClause: any = { id: req.params.id };
+
+        if (schoolYearId) {
+            whereClause.school_year_id = schoolYearId;
+        }
+
+        const student = await Student.findOne({
+            where: whereClause,
+            include: [{ model: Class, as: 'class' }]
+        });
+
+        if (!student) return res.status(404).json({ message: 'Student not found in this school year' });
         res.json(student);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
@@ -34,8 +51,17 @@ export const getStudentById = async (req: Request, res: Response) => {
 
 export const createStudent = async (req: Request, res: Response) => {
     try {
+        const schoolYearId = req.headers['x-school-year-id'];
+        if (!schoolYearId) {
+            return res.status(400).json({ message: 'School Year ID is required' });
+        }
+
         const matricule = await generateMatricule();
-        const student = await Student.create({ ...req.body, matricule });
+        const student = await Student.create({
+            ...req.body,
+            matricule,
+            school_year_id: schoolYearId
+        });
         res.status(201).json(student);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });

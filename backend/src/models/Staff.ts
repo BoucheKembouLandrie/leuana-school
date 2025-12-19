@@ -9,6 +9,7 @@ class Staff extends Model {
     public tel!: string;
     public email!: string;
     public salaire!: number;
+    public school_year_id!: number;
 }
 
 Staff.init(
@@ -45,6 +46,14 @@ Staff.init(
             type: DataTypes.DECIMAL(10, 2),
             allowNull: true,
             defaultValue: 0,
+        },
+        school_year_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'school_years',
+                key: 'id',
+            },
         },
     },
     {

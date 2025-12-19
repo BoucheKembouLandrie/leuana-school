@@ -3,7 +3,21 @@ import Expense from '../models/Expense';
 
 export const getAllExpenses = async (req: Request, res: Response) => {
     try {
-        const expenses = await Expense.findAll({ order: [['date_depense', 'DESC']] });
+        const schoolYearId = req.headers['x-school-year-id'];
+        console.log(`[EXPENSE_CTRL] Request for Expenses. ID: ${schoolYearId}`);
+        if (!schoolYearId) {
+            console.log('[EXPENSE_CTRL] BLOCKED: Missing ID');
+            return res.status(400).json({ message: 'School Year ID is required' });
+        }
+
+        const expenses = await Expense.findAll({
+            where: { school_year_id: schoolYearId },
+            order: [['date_depense', 'DESC']],
+            include: [
+                { model: require('../models/Teacher').default, as: 'teacher' },
+                { model: require('../models/Staff').default, as: 'staffMember' }
+            ]
+        });
         res.json(expenses);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
@@ -12,7 +26,15 @@ export const getAllExpenses = async (req: Request, res: Response) => {
 
 export const createExpense = async (req: Request, res: Response) => {
     try {
-        const expense = await Expense.create(req.body);
+        const schoolYearId = req.headers['x-school-year-id'];
+        if (!schoolYearId) {
+            return res.status(400).json({ message: 'School Year ID is required' });
+        }
+
+        const expense = await Expense.create({
+            ...req.body,
+            school_year_id: schoolYearId
+        });
         res.status(201).json(expense);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });

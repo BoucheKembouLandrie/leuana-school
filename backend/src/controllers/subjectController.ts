@@ -5,7 +5,13 @@ import Class from '../models/Class';
 
 export const getAllSubjects = async (req: Request, res: Response) => {
     try {
+        const schoolYearId = req.headers['x-school-year-id'];
+        if (!schoolYearId) {
+            return res.status(400).json({ message: 'School Year ID is required' });
+        }
+
         const subjects = await Subject.findAll({
+            where: { school_year_id: schoolYearId },
             include: [
                 { model: Teacher, as: 'teacher' },
                 { model: Class, as: 'class' }
@@ -34,7 +40,15 @@ export const getSubjectById = async (req: Request, res: Response) => {
 
 export const createSubject = async (req: Request, res: Response) => {
     try {
-        const subject = await Subject.create(req.body);
+        const schoolYearId = req.headers['x-school-year-id'];
+        if (!schoolYearId) {
+            return res.status(400).json({ message: 'School Year ID is required' });
+        }
+
+        const subject = await Subject.create({
+            ...req.body,
+            school_year_id: schoolYearId
+        });
         res.status(201).json(subject);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });

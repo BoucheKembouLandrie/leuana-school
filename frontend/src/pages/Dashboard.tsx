@@ -3,6 +3,7 @@ import { Paper, Typography, Box, CircularProgress, TextField, Button, Autocomple
 import { People, School, Payment, AccountBalance } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import api from '../services/api';
+import { useSchoolYear } from '../contexts/SchoolYearContext';
 
 interface StatCardProps {
     title: string;
@@ -44,6 +45,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, loading 
 );
 
 const Dashboard: React.FC = () => {
+    const { currentYear } = useSchoolYear();
     const [stats, setStats] = useState({
         students: 0,
         classes: 0,
@@ -57,7 +59,6 @@ const Dashboard: React.FC = () => {
     });
 
     // Success Rate State
-    // Success Rate State
     const [selectedEvaluation, setSelectedEvaluation] = useState<any>(null);
     const [selectedClass, setSelectedClass] = useState<any>(null);
     const [successRateData, setSuccessRateData] = useState<any>(null);
@@ -69,11 +70,11 @@ const Dashboard: React.FC = () => {
         { name: 'Échec', value: successRateData.failure, color: '#f44336' }
     ] : [];
 
-
-
-
     useEffect(() => {
         const fetchStats = async () => {
+            if (!currentYear) return;
+
+            setLoading(true);
             try {
                 const [studentsRes, classesRes, teachersRes, paymentsRes, expensesRes] = await Promise.all([
                     api.get('/students'),
@@ -83,48 +84,67 @@ const Dashboard: React.FC = () => {
                     api.get('/expenses'),
                 ]);
 
+                // Filter data by the selected school year
+
+                // 1. Classes: Filter by year name (e.g. "2024-2025")
+                // Be flexible with property name if API varies
+                const yearClasses = classesRes.data.filter((c: any) => c.annee === currentYear.name);
+                const yearClassIds = yearClasses.map((c: any) => c.id);
+
+                // 2. Students: Filter by classes that belong to this year
+                const yearStudents = studentsRes.data.filter((s: any) => yearClassIds.includes(s.classe_id));
+
+                // 3. Teachers: Currently global (unless we link them to classes/years later)
+                const teachersCount = teachersRes.data.length;
+
+                // 4. Payments & Expenses: Filter by date range
+                // Fallback parsing if startYear/endYear missing (legacy/migration)
+                let startYear = currentYear.startYear;
+                let endYear = currentYear.endYear;
+
+                if (!startYear || !endYear) {
+                    const match = currentYear.name.match(/^(\d{4})-(\d{4})$/);
+                    if (match) {
+                        startYear = parseInt(match[1]);
+                        endYear = parseInt(match[2]);
+                    } else {
+                        // Ultimate fallback: Use current year logic (legacy behavior)
+                        const now = new Date();
+                        const curM = now.getMonth();
+                        startYear = curM < 7 ? now.getFullYear() - 1 : now.getFullYear();
+                        endYear = startYear + 1;
+                    }
+                }
+
+                const academicYearStart = new Date(startYear, 7, 1); // Aug 1st, StartYear
+                const academicYearEnd = new Date(endYear, 6, 31, 23, 59, 59); // July 31st, EndYear
+
+                const yearPayments = paymentsRes.data.filter((payment: any) => {
+                    const payDate = new Date(payment.date_paiement);
+                    return payDate >= academicYearStart && payDate <= academicYearEnd;
+                });
+
+                const yearExpenses = expensesRes.data.filter((expense: any) => {
+                    const expDate = new Date(expense.date_depense);
+                    return expDate >= academicYearStart && expDate <= academicYearEnd;
+                });
+
                 setStats({
-                    students: studentsRes.data.length,
-                    classes: classesRes.data.length,
-                    teachers: teachersRes.data.length,
-                    payments: paymentsRes.data.length,
+                    students: yearStudents.length,
+                    classes: yearClasses.length,
+                    teachers: teachersCount,
+                    payments: yearPayments.length,
                 });
 
-                // Calculate academic year period (August current year to July next year)
-                const now = new Date();
-                const currentYear = now.getFullYear();
-                const currentMonth = now.getMonth(); // 0-11
-
-                // If we're before August (month 7), the academic year started last August
-                // Otherwise, it started this August
-                const academicYearStart = currentMonth < 7
-                    ? new Date(currentYear - 1, 7, 1) // August 1st of last year
-                    : new Date(currentYear, 7, 1);     // August 1st of this year
-
-                const academicYearEnd = new Date(academicYearStart.getFullYear() + 1, 6, 31, 23, 59, 59); // July 31st next year
-
-                // Filter payments by academic year
-                const academicYearPayments = paymentsRes.data.filter((payment: any) => {
-                    const paymentDate = new Date(payment.date_paiement);
-                    return paymentDate >= academicYearStart && paymentDate <= academicYearEnd;
-                });
-
-                // Filter expenses by academic year
-                const academicYearExpenses = expensesRes.data.filter((expense: any) => {
-                    const expenseDate = new Date(expense.date_depense);
-                    return expenseDate >= academicYearStart && expenseDate <= academicYearEnd;
-                });
-
-                // Calculate income from payments
-                const totalIncome = academicYearPayments.reduce((sum: number, payment: any) => sum + Number(payment.montant || 0), 0);
-
-                // Calculate expenses (salaries + general charges)
-                const totalExpenses = academicYearExpenses.reduce((sum: number, expense: any) => sum + Number(expense.montant || 0), 0);
+                // Calculate Finances
+                const totalIncome = yearPayments.reduce((sum: number, p: any) => sum + Number(p.montant || 0), 0);
+                const totalExpenses = yearExpenses.reduce((sum: number, e: any) => sum + Number(e.montant || 0), 0);
 
                 setFinancialData({
                     income: totalIncome,
                     expenses: totalExpenses
                 });
+
             } catch (error) {
                 console.error('Error fetching stats:', error);
             } finally {
@@ -133,18 +153,27 @@ const Dashboard: React.FC = () => {
         };
 
         fetchStats();
-        fetchSuccessRateOptions();
-    }, []);
+        // Reset filters when year changes
+        setSelectedClass(null);
+        setSelectedEvaluation(null);
+        setSuccessRateData(null);
+        fetchSuccessRateOptions(); // Refresh options for dropdowns
+    }, [currentYear]);
 
-    // Fetch success rate options
+    // Fetch success rate options (Classes should be filtered by year)
     const fetchSuccessRateOptions = async () => {
+        if (!currentYear) return;
         try {
             const [evaluationsRes, classesRes] = await Promise.all([
                 api.get('/evaluations'),
                 api.get('/classes')
             ]);
             setSuccessEvaluations(evaluationsRes.data);
-            setSuccessClasses(classesRes.data);
+
+            // Filter classes for dropdown to only show current year's classes
+            const yearClasses = classesRes.data.filter((c: any) => c.annee === currentYear.name);
+            setSuccessClasses(yearClasses);
+
         } catch (error) {
             console.error('Error fetching success rate options:', error);
         }
@@ -238,7 +267,7 @@ const Dashboard: React.FC = () => {
                         Aperçu Financier (Année Scolaire)
                     </Typography>
                     <Typography variant="caption" color="textSecondary" sx={{ mb: 2, display: 'block' }}>
-                        Période : Août {new Date().getMonth() < 7 ? new Date().getFullYear() - 1 : new Date().getFullYear()} - Juillet {new Date().getMonth() < 7 ? new Date().getFullYear() : new Date().getFullYear() + 1}
+                        Période : Août {currentYear?.startYear || (currentYear?.name ? parseInt(currentYear.name.split('-')[0]) : '...')} - Juillet {currentYear?.endYear || (currentYear?.name ? parseInt(currentYear.name.split('-')[1]) : '...')}
                     </Typography>
                     <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-around' }}>
                         <Box sx={{ textAlign: 'center' }}>

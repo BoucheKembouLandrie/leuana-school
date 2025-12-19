@@ -161,9 +161,14 @@ export const deleteGrade = async (req: Request, res: Response) => {
 export const getSuccessRate = async (req: Request, res: Response) => {
     try {
         const { evaluation, classe_id, eleve_id } = req.query;
+        const schoolYearId = req.headers['x-school-year-id'];
+
+        if (!schoolYearId) {
+            return res.status(400).json({ message: 'School Year ID is required' });
+        }
 
         // Build where clause for grades
-        const whereClause: any = {};
+        const whereClause: any = { school_year_id: schoolYearId };
         if (evaluation) {
             // Handle multiple evaluations (comma-separated)
             const evaluations = (evaluation as string).split(',');
@@ -194,7 +199,8 @@ export const getSuccessRate = async (req: Request, res: Response) => {
 
             const students = await Student.findAll({
                 where: {
-                    classe_id: classeIds.length === 1 ? classeIds[0] : { [Op.in]: classeIds }
+                    classe_id: classeIds.length === 1 ? classeIds[0] : { [Op.in]: classeIds },
+                    school_year_id: schoolYearId
                 }
             });
             const studentIds = students.map(s => s.id);
@@ -233,7 +239,7 @@ export const getSuccessRate = async (req: Request, res: Response) => {
         });
 
         // Get all subjects with coefficients
-        const subjects = await Subject.findAll();
+        const subjects = await Subject.findAll({ where: { school_year_id: schoolYearId } });
         const subjectMap = new Map(subjects.map(s => [s.id, s]));
 
         // Calculate success/failure
@@ -249,6 +255,7 @@ export const getSuccessRate = async (req: Request, res: Response) => {
 
             studentGrades.forEach(grade => {
                 const subject = subjectMap.get(grade.matiere_id);
+                // Graceful fallback if subject missing (rare but possible across changes)
                 const coefficient = subject?.coefficient || 1;
                 totalPoints += parseFloat(grade.note) * coefficient;
                 totalCoeffs += coefficient;
@@ -283,10 +290,16 @@ export const getSuccessRate = async (req: Request, res: Response) => {
 export const getSubjectStats = async (req: Request, res: Response) => {
     try {
         const { evaluation, classe_id, eleve_id } = req.query;
-        console.log('API getSubjectStats params:', { evaluation, classe_id, eleve_id });
+        const schoolYearId = req.headers['x-school-year-id'];
+
+        console.log('API getSubjectStats params:', { evaluation, classe_id, eleve_id, schoolYearId });
+
+        if (!schoolYearId) {
+            return res.status(400).json({ message: 'School Year ID is required' });
+        }
 
         // Build where clause for grades
-        const whereClause: any = {};
+        const whereClause: any = { school_year_id: schoolYearId };
         if (evaluation) {
             const { Op } = require('sequelize');
             const criteria = [];
@@ -330,7 +343,8 @@ export const getSubjectStats = async (req: Request, res: Response) => {
             // Get students first to ensure we only get grades for students in this class
             const students = await Student.findAll({
                 where: {
-                    classe_id: classeIds.length === 1 ? classeIds[0] : { [Op.in]: classeIds }
+                    classe_id: classeIds.length === 1 ? classeIds[0] : { [Op.in]: classeIds },
+                    school_year_id: schoolYearId
                 }
             });
             const studentIds = students.map(s => s.id);

@@ -4,7 +4,15 @@ import Student from '../models/Student';
 
 export const getAllClasses = async (req: Request, res: Response) => {
     try {
-        const classes = await Class.findAll({ include: [{ model: Student, as: 'students' }] });
+        const schoolYearId = req.headers['x-school-year-id'];
+        if (!schoolYearId) {
+            return res.status(400).json({ message: 'School Year ID is required' });
+        }
+
+        const classes = await Class.findAll({
+            where: { school_year_id: schoolYearId },
+            include: [{ model: Student, as: 'students' }]
+        });
         res.json(classes);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
@@ -23,7 +31,15 @@ export const getClassById = async (req: Request, res: Response) => {
 
 export const createClass = async (req: Request, res: Response) => {
     try {
-        const classe = await Class.create(req.body);
+        const schoolYearId = req.headers['x-school-year-id'];
+        if (!schoolYearId) {
+            return res.status(400).json({ message: 'School Year ID is required' });
+        }
+
+        const classe = await Class.create({
+            ...req.body,
+            school_year_id: schoolYearId
+        });
         res.status(201).json(classe);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });

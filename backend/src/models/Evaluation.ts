@@ -7,6 +7,7 @@ class Evaluation extends Model {
     public date_debut!: string;
     public date_fin!: string;
     public ordre!: number;
+    public school_year_id!: number;
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
 }
@@ -34,6 +35,14 @@ Evaluation.init(
             type: DataTypes.INTEGER,
             allowNull: false,
             defaultValue: 0,
+        },
+        school_year_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'school_years',
+                key: 'id',
+            },
         },
     },
     {

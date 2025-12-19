@@ -182,7 +182,11 @@ const Attendance: React.FC = () => {
 
     // Filter attendances based on selected filters
     const filteredAttendances = attendances.filter(attendance => {
+        // Require Class Selection to show any data
+        if (!filterClass) return false;
+
         if (filterDate && attendance.date.split('T')[0] !== filterDate) return false;
+
         if (filterClass) {
             const student = students.find(s => s.id === attendance.eleve_id);
             if (!student || student.classe_id !== parseInt(filterClass)) return false;
@@ -281,7 +285,7 @@ const Attendance: React.FC = () => {
                 </Grid>
             </Paper>
 
-            <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
+            <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
                 <Table stickyHeader>
                     <TableHead>
                         <TableRow>

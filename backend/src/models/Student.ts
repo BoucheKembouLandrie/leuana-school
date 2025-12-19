@@ -14,6 +14,7 @@ class Student extends Model {
     public classe_id!: number;
     public date_inscription!: Date;
     public category!: string;
+    public school_year_id!: number;
 }
 
 Student.init(
@@ -68,6 +69,14 @@ Student.init(
             type: DataTypes.STRING,
             allowNull: false,
             defaultValue: 'Non redoublant',
+        },
+        school_year_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'school_years',
+                key: 'id',
+            },
         },
     },
     {

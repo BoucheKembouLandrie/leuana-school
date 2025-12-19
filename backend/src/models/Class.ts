@@ -7,6 +7,7 @@ class Class extends Model {
     public niveau!: string;
     public annee!: string;
     public pension!: number;
+    public school_year_id!: number;
 }
 
 Class.init(
@@ -32,6 +33,14 @@ Class.init(
             type: DataTypes.DECIMAL(10, 2),
             allowNull: false,
             defaultValue: 0,
+        },
+        school_year_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'school_years',
+                key: 'id',
+            },
         },
     },
     {

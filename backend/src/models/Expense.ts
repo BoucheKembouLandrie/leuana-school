@@ -11,6 +11,7 @@ class Expense extends Model {
     public status!: 'payé' | 'en_attente';
     public teacher_id?: number;
     public staff_id?: number;
+    public school_year_id!: number;
 }
 
 Expense.init(
@@ -59,6 +60,14 @@ Expense.init(
             allowNull: true,
             references: {
                 model: 'staff',
+                key: 'id',
+            },
+        },
+        school_year_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'school_years',
                 key: 'id',
             },
         },

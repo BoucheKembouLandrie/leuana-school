@@ -4,7 +4,34 @@ import Student from '../models/Student';
 
 export const getAllAttendance = async (req: Request, res: Response) => {
     try {
-        const attendance = await Attendance.findAll({ include: [{ model: Student, as: 'student' }] });
+        const schoolYearId = req.headers['x-school-year-id'];
+        const { date, startDate, endDate, limit } = req.query;
+
+        if (!schoolYearId) {
+            return res.status(400).json({ message: 'School Year ID is required' });
+        }
+
+        const whereClause: any = { school_year_id: schoolYearId };
+
+        // Filter by specific date
+        if (date) {
+            whereClause.date = date;
+        }
+
+        // Filter by date range
+        if (startDate && endDate) {
+            whereClause.date = {
+                [require('sequelize').Op.between]: [startDate, endDate]
+            };
+        }
+
+        const attendance = await Attendance.findAll({
+            where: whereClause,
+            include: [{ model: Student, as: 'student' }],
+            order: [['date', 'DESC']],
+            limit: limit ? parseInt(limit as string) : 1000 // Default limit to prevent overload
+        });
+
         res.json(attendance);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
@@ -32,7 +59,15 @@ export const getAttendanceByStudent = async (req: Request, res: Response) => {
 
 export const createAttendance = async (req: Request, res: Response) => {
     try {
-        const attendance = await Attendance.create(req.body);
+        const schoolYearId = req.headers['x-school-year-id'];
+        if (!schoolYearId) {
+            return res.status(400).json({ message: 'School Year ID is required' });
+        }
+
+        const attendance = await Attendance.create({
+            ...req.body,
+            school_year_id: schoolYearId
+        });
         res.status(201).json(attendance);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });

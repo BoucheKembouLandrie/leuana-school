@@ -17,8 +17,10 @@ import Settings from './pages/Settings';
 import Administration from './pages/Administration';
 import Staff from './pages/Staff';
 import Expenses from './pages/Expenses';
+import Planning from './pages/Planning';
 import DashboardLayout from './layouts/DashboardLayout';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { SchoolYearProvider } from './contexts/SchoolYearContext';
 
 // User interface
 interface UserInfo {
@@ -102,41 +104,44 @@ const App: React.FC = () => {
 
   return (
     <AuthContext.Provider value={auth}>
-      <SettingsProvider>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <Router>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route
-                path="/"
-                element={
-                  <PrivateRoute>
-                    <DashboardLayout />
-                  </PrivateRoute>
-                }
-              >
-                <Route index element={<Dashboard />} />
-                <Route path="students" element={<Students />} />
-                <Route path="classes" element={<Classes />} />
-                <Route path="teachers" element={<Teachers />} />
-                <Route path="subjects" element={<Subjects />} />
-                <Route path="examens" element={<Examens />} />
-                <Route path="grades" element={<Grades />} />
-                <Route path="payments" element={<Payments />} />
-                <Route path="attendance" element={<Attendance />} />
-                <Route path="users" element={<Users />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="administration" element={<Administration />} />
-                <Route path="staff" element={<Staff />} />
-                <Route path="expenses" element={<Expenses />} />
-              </Route>
-              {/* Redirect any unknown route to login */}
-              <Route path="*" element={<Navigate to="/login" replace />} />
-            </Routes>
-          </Router>
-        </ThemeProvider>
-      </SettingsProvider>
+      <SchoolYearProvider>
+        <SettingsProvider>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <Router>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route
+                  path="/"
+                  element={
+                    <PrivateRoute>
+                      <DashboardLayout />
+                    </PrivateRoute>
+                  }
+                >
+                  <Route index element={<Dashboard />} />
+                  <Route path="students" element={<Students />} />
+                  <Route path="classes" element={<Classes />} />
+                  <Route path="teachers" element={<Teachers />} />
+                  <Route path="subjects" element={<Subjects />} />
+                  <Route path="examens" element={<Examens />} />
+                  <Route path="grades" element={<Grades />} />
+                  <Route path="payments" element={<Payments />} />
+                  <Route path="attendance" element={<Attendance />} />
+                  <Route path="users" element={<Users />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="administration" element={<Administration />} />
+                  <Route path="staff" element={<Staff />} />
+                  <Route path="expenses" element={<Expenses />} />
+                  <Route path="planning" element={<Planning />} />
+                </Route>
+                {/* Redirect any unknown route to login */}
+                <Route path="*" element={<Navigate to="/login" replace />} />
+              </Routes>
+            </Router>
+          </ThemeProvider>
+        </SettingsProvider>
+      </SchoolYearProvider>
     </AuthContext.Provider>
   );
 };
