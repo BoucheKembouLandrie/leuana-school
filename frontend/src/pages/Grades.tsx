@@ -25,8 +25,10 @@ import {
 import PrintIcon from '@mui/icons-material/Print';
 import CloseIcon from '@mui/icons-material/Close';
 import api from '../services/api';
+import { useSchoolYear } from '../contexts/SchoolYearContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { BASE_URL } from '../config';
+import { formatDate } from '../utils/formatDate';
 import { useAuthContext } from '../App';
 import TeacherGradesView from '../components/TeacherGradesView';
 
@@ -80,6 +82,7 @@ const Grades: React.FC = () => {
 
 const AdminGradesView: React.FC = () => {
     const { settings } = useSettings();
+    const { currentYear } = useSchoolYear();
 
     // Selection State
     const [selectedEvaluation, setSelectedEvaluation] = useState('');
@@ -245,7 +248,7 @@ const AdminGradesView: React.FC = () => {
                     eleve_id: Number(selectedStudent),
                     matiere_id: entry.matiere_id,
                     trimestre: selectedEvaluation,
-                    annee_scolaire: '2024-2025',
+                    annee_scolaire: currentYear?.name || '2024-2025',
                     note: parseFloat(entry.note)
                 }));
 
@@ -582,7 +585,7 @@ const AdminGradesView: React.FC = () => {
                                                         <TableCell sx={{ borderRight: '1px solid #ccc' }}>{row.matiere}</TableCell>
                                                         <TableCell align="center" sx={{ borderRight: '1px solid #ccc' }}>{row.note}</TableCell>
                                                         <TableCell align="center" sx={{ borderRight: '1px solid #ccc' }}>{row.coefficient}</TableCell>
-                                                        <TableCell align="center" sx={{ borderRight: '1px solid #ccc' }}>{row.noteTotale}</TableCell>
+                                                        <TableCell align="center" sx={{ borderRight: '1px solid #ccc' }}>{typeof row.noteTotale === 'number' ? row.noteTotale.toFixed(2) : row.noteTotale}</TableCell>
                                                         <TableCell align="center">{row.observation}</TableCell>
                                                     </TableRow>
                                                 ))}
@@ -605,7 +608,7 @@ const AdminGradesView: React.FC = () => {
                                                 <Typography align="center">moyenne</Typography>
                                             </Grid>
                                             <Grid size={{ xs: 2 }} sx={{ p: 1, borderRight: '1px solid black' }}>
-                                                <Typography align="center" fontWeight="bold">{data.average}</Typography>
+                                                <Typography align="center" fontWeight="bold">{typeof data.average === 'number' ? data.average.toFixed(2) : data.average}</Typography>
                                             </Grid>
                                             <Grid size={{ xs: 2 }} sx={{ p: 1, borderRight: '1px solid black', bgcolor: '#FFF5F0' }}>
                                                 <Typography align="center">rang</Typography>
@@ -623,7 +626,7 @@ const AdminGradesView: React.FC = () => {
                                     </Box>
 
                                     <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', px: 4 }}>
-                                        <Typography variant="subtitle1" sx={{ fontSize: '11pt' }}>{new Date().toLocaleDateString('fr-FR')}</Typography>
+                                        <Typography variant="subtitle1" sx={{ fontSize: '11pt' }}>{formatDate(new Date())}</Typography>
                                         <Typography variant="subtitle1" sx={{ fontSize: '11pt' }}>Le principal</Typography>
                                     </Box>
                                 </div>
@@ -792,7 +795,7 @@ const AdminGradesView: React.FC = () => {
                                                             sx={{ width: '80px' }}
                                                         />
                                                     </TableCell>
-                                                    <TableCell align="center">{entry.note_finale}</TableCell>
+                                                    <TableCell align="center">{typeof entry.note_finale === 'number' ? entry.note_finale.toFixed(2) : entry.note_finale}</TableCell>
                                                     <TableCell align="center">{entry.observation}</TableCell>
                                                 </TableRow>
                                             ))}

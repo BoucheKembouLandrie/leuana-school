@@ -13,6 +13,7 @@ import Expense from './Expense';
 import Staff from './Staff';
 import SchoolYear from './SchoolYear';
 import Schedule from './Schedule';
+import ExamRule from './ExamRule';
 
 // Associations
 
@@ -109,4 +110,5 @@ export {
     Staff,
     SchoolYear,
     Schedule,
+    ExamRule,
 };

@@ -7,7 +7,7 @@ import bcrypt from 'bcrypt';
 export const getAllUsers = async (req: Request, res: Response) => {
     try {
         const users = await User.findAll({
-            attributes: ['id', 'username', 'role', 'is_default', 'teacher_id', 'permissions'],
+            attributes: ['id', 'username', 'email', 'role', 'is_default', 'teacher_id', 'permissions'],
             include: [{
                 model: Teacher,
                 as: 'teacher',
@@ -25,7 +25,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 // Create new user (admin only)
 export const createUser = async (req: Request, res: Response) => {
     try {
-        const { username, password, role, teacher_id, permissions } = req.body;
+        const { username, password, email, role, teacher_id, permissions } = req.body;
 
         // Validate required fields
         if (!username || !password || !role) {
@@ -54,6 +54,7 @@ export const createUser = async (req: Request, res: Response) => {
         const user = await User.create({
             username,
             password: hashedPassword,
+            email: email || null,
             role,
             is_default: false,
             teacher_id: role === 'teacher' ? teacher_id : null,
@@ -63,6 +64,7 @@ export const createUser = async (req: Request, res: Response) => {
         res.status(201).json({
             id: user.id,
             username: user.username,
+            email: user.email,
             role: user.role,
             is_default: user.is_default,
             teacher_id: user.teacher_id,
@@ -78,7 +80,7 @@ export const createUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { username, password, role, teacher_id, permissions } = req.body;
+        const { username, password, email, role, teacher_id, permissions } = req.body;
 
         const user = await User.findByPk(id);
         if (!user) {
@@ -93,6 +95,7 @@ export const updateUser = async (req: Request, res: Response) => {
         // Prepare update data
         const updateData: any = {};
         if (username) updateData.username = username;
+        if (email !== undefined) updateData.email = email || null;
         if (role) updateData.role = role;
         if (password) {
             updateData.password = await bcrypt.hash(password, 10);
@@ -115,6 +118,7 @@ export const updateUser = async (req: Request, res: Response) => {
         res.json({
             id: user.id,
             username: user.username,
+            email: user.email,
             role: user.role,
             is_default: user.is_default,
             teacher_id: user.teacher_id,

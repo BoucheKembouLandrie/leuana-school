@@ -55,3 +55,37 @@ export const deleteStaff = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Server error', error });
     }
 };
+
+export const transferStaff = async (req: Request, res: Response) => {
+    try {
+        const { staffIds, destYearId } = req.body;
+
+        if (!staffIds || !Array.isArray(staffIds) || !destYearId) {
+            return res.status(400).json({ message: 'Invalid payload' });
+        }
+
+        let transferCount = 0;
+
+        for (const staffId of staffIds) {
+            const sourceStaff = await Staff.findByPk(staffId);
+            if (sourceStaff) {
+                await Staff.create({
+                    titre: sourceStaff.titre,
+                    nom: sourceStaff.nom,
+                    prenom: sourceStaff.prenom,
+                    tel: sourceStaff.tel,
+                    email: sourceStaff.email,
+                    salaire: sourceStaff.salaire,
+                    school_year_id: destYearId
+                });
+                transferCount++;
+            }
+        }
+
+        res.json({ message: 'Transfer successful', count: transferCount });
+
+    } catch (error) {
+        console.error('Transfer error:', error);
+        res.status(500).json({ message: 'Server error during transfer', error });
+    }
+};

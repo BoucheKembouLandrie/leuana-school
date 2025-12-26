@@ -144,8 +144,8 @@ const Teachers: React.FC = () => {
 
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-            <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 220px)' }}>
-                <Table stickyHeader>
+            <TableContainer component={Paper} sx={{ maxHeight: 586 }}>
+                <Table size="small" stickyHeader>
                     <TableHead>
                         <TableRow>
                             <TableCell>Nom</TableCell>

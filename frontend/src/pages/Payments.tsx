@@ -25,6 +25,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import api from '../services/api';
+import { formatDate } from '../utils/formatDate';
 
 // Schema pour l'ajout d'une tranche
 const paymentSchema = z.object({
@@ -346,8 +347,8 @@ const Payments: React.FC = () => {
                     </Paper>
 
                     {/* Payments List */}
-                    <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 440 }}>
-                        <Table stickyHeader>
+                    <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 586 }}>
+                        <Table size="small" stickyHeader>
                             <TableHead>
                                 <TableRow>
                                     <TableCell>Intitulé</TableCell>
@@ -360,7 +361,7 @@ const Payments: React.FC = () => {
                                     studentPayments.map((payment) => (
                                         <TableRow key={payment.id} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#FFFDE7' } }}>
                                             <TableCell>{payment.motif}</TableCell>
-                                            <TableCell>{new Date(payment.date_paiement).toLocaleDateString('fr-FR')}</TableCell>
+                                            <TableCell>{formatDate(payment.date_paiement)}</TableCell>
                                             <TableCell>{payment.montant.toLocaleString()}</TableCell>
                                         </TableRow>
                                     ))

@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Paper, Typography, Box, CircularProgress, TextField, Button, Autocomplete } from '@mui/material';
-import { People, School, Payment, AccountBalance } from '@mui/icons-material';
+import { Paper, Typography, Box, CircularProgress, TextField, Button, Autocomplete, Dialog } from '@mui/material';
+import { People, School, Payment, AccountBalance, Book, SupervisorAccount, CheckCircle, Settings } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import api from '../services/api';
 import { useSchoolYear } from '../contexts/SchoolYearContext';
+import ClassTransferModal from '../components/ClassTransferModal';
+import StudentTransferModal from '../components/StudentTransferModal';
+import TeacherTransferModal from '../components/TeacherTransferModal';
+import StaffTransferModal from '../components/StaffTransferModal';
+import SubjectTransferModal from '../components/SubjectTransferModal';
+import ConfigTransferModal from '../components/ConfigTransferModal';
 
 interface StatCardProps {
     title: string;
@@ -64,6 +70,14 @@ const Dashboard: React.FC = () => {
     const [successRateData, setSuccessRateData] = useState<any>(null);
     const [successEvaluations, setSuccessEvaluations] = useState<any[]>([]);
     const [successClasses, setSuccessClasses] = useState<any[]>([]);
+
+    // Suggestion Box State
+    const [suggestionForm, setSuggestionForm] = useState({
+        name: '',
+        email: '',
+        message: ''
+    });
+    const [suggestionSuccessOpen, setSuggestionSuccessOpen] = useState(false);
 
     const successChartData = successRateData ? [
         { name: 'Réussite', value: successRateData.success, color: '#4CAF50' },
@@ -204,10 +218,37 @@ const Dashboard: React.FC = () => {
         }
     };
 
+    const handleSuggestionSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await api.post('/suggestions', suggestionForm);
+            setSuggestionSuccessOpen(true);
+        } catch (error) {
+            alert('Erreur lors de l\'envoi de la suggestion');
+        }
+    };
+
+    const handleSuggestionClose = () => {
+        setSuggestionSuccessOpen(false);
+        // Reset form ONLY on close
+        setSuggestionForm({
+            name: '',
+            email: '',
+            message: ''
+        });
+    };
+
     const chartData = [
         { name: 'Entrées (Pensions)', value: financialData.income, color: '#4CAF50' },
         { name: 'Sorties (Dépenses)', value: financialData.expenses, color: '#f44336' }
     ];
+
+    const [studentTransferOpen, setStudentTransferOpen] = useState(false);
+    const [classTransferModalOpen, setClassTransferModalOpen] = useState(false);
+    const [teacherTransferOpen, setTeacherTransferOpen] = useState(false);
+    const [staffTransferOpen, setStaffTransferOpen] = useState(false);
+    const [subjectTransferOpen, setSubjectTransferOpen] = useState(false);
+    const [configTransferOpen, setConfigTransferOpen] = useState(false);
 
     return (
         <Box>
@@ -252,17 +293,17 @@ const Dashboard: React.FC = () => {
 
             <Box sx={{ mt: 4, mb: 3 }}>
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                    Bienvenue dans le système de gestion scolaire Leuana School
+                    Bienvenue dans le système de gestion scolaire BOKELAND SCHOOL SYSTEM
                 </Typography>
                 <Typography variant="body1" color="textSecondary">
                     Utilisez le menu de gauche pour naviguer entre les différents modules.
                 </Typography>
             </Box>
 
-            {/* 4-column layout for financial overview */}
+            {/* 4-column layout */}
             <Box sx={{ display: 'flex', gap: 3, mt: 4 }}>
                 {/* Column 1: Pie Chart */}
-                <Paper sx={{ flex: 1.5, p: 3, display: 'flex', flexDirection: 'column' }}>
+                <Paper sx={{ flex: 1, p: 3, display: 'flex', flexDirection: 'column' }}>
                     <Typography variant="h6" sx={{ mb: 0.5 }}>
                         Aperçu Financier (Année Scolaire)
                     </Typography>
@@ -273,13 +314,13 @@ const Dashboard: React.FC = () => {
                         <Box sx={{ textAlign: 'center' }}>
                             <Typography variant="caption" color="textSecondary">Total Entrées</Typography>
                             <Typography variant="h6" sx={{ color: '#4CAF50', fontWeight: 600 }}>
-                                {financialData.income.toLocaleString()} FCFA
+                                {financialData.income.toLocaleString(undefined, { maximumFractionDigits: 2 })} FCFA
                             </Typography>
                         </Box>
                         <Box sx={{ textAlign: 'center' }}>
                             <Typography variant="caption" color="textSecondary">Total Sorties</Typography>
                             <Typography variant="h6" sx={{ color: '#f44336', fontWeight: 600 }}>
-                                {financialData.expenses.toLocaleString()} FCFA
+                                {financialData.expenses.toLocaleString(undefined, { maximumFractionDigits: 2 })} FCFA
                             </Typography>
                         </Box>
                     </Box>
@@ -291,8 +332,8 @@ const Dashboard: React.FC = () => {
                                     cx="50%"
                                     cy="50%"
                                     labelLine={false}
-                                    label={({ percent }) => `${((percent || 0) * 100).toFixed(1)}%`}
-                                    outerRadius={100}
+                                    label={({ percent }) => `${((percent || 0) * 100).toFixed(2)}%`}
+                                    outerRadius={80}
                                     fill="#8884d8"
                                     dataKey="value"
                                 >
@@ -321,7 +362,7 @@ const Dashboard: React.FC = () => {
                 </Paper>
 
                 {/* Column 2: Success Rate Chart */}
-                <Paper sx={{ flex: 1.5, p: 3, display: 'flex', flexDirection: 'column' }}>
+                <Paper sx={{ flex: 1, p: 3, display: 'flex', flexDirection: 'column' }}>
                     <Typography variant="h6" sx={{ mb: 0.5 }}>
                         Taux de Réussite
                     </Typography>
@@ -330,7 +371,7 @@ const Dashboard: React.FC = () => {
                     </Typography>
 
                     {/* Filters */}
-                    <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, mb: 2 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2 }}>
                         <Autocomplete
                             options={successEvaluations}
                             getOptionLabel={(option) => option.nom}
@@ -338,7 +379,7 @@ const Dashboard: React.FC = () => {
                             onChange={(_, newValue) => setSelectedEvaluation(newValue)}
                             renderOption={(props, option) => (
                                 <li {...props}>
-                                    <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
+                                    <Typography sx={{ fontSize: '1rem' }}>
                                         {option.nom}
                                     </Typography>
                                 </li>
@@ -351,7 +392,7 @@ const Dashboard: React.FC = () => {
                                     placeholder="Sélectionner une évaluation"
                                 />
                             )}
-                            sx={{ flex: 1 }}
+                            fullWidth
                             isOptionEqualToValue={(option, value) => option.id === value.id}
                         />
 
@@ -362,7 +403,7 @@ const Dashboard: React.FC = () => {
                             onChange={(_, newValue) => setSelectedClass(newValue)}
                             renderOption={(props, option) => (
                                 <li {...props}>
-                                    <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
+                                    <Typography sx={{ fontSize: '1rem' }}>
                                         {option.libelle}
                                     </Typography>
                                 </li>
@@ -375,7 +416,7 @@ const Dashboard: React.FC = () => {
                                     placeholder="Sélectionner une classe"
                                 />
                             )}
-                            sx={{ flex: 1 }}
+                            fullWidth
                             isOptionEqualToValue={(option, value) => option.id === value.id}
                         />
                     </Box>
@@ -390,8 +431,8 @@ const Dashboard: React.FC = () => {
                                             cx="50%"
                                             cy="50%"
                                             labelLine={false}
-                                            label={({ percent }) => `${((percent || 0) * 100).toFixed(1)}%`}
-                                            outerRadius={100}
+                                            label={({ percent }) => `${((percent || 0) * 100).toFixed(2)}%`}
+                                            outerRadius={80}
                                             fill="#8884d8"
                                             dataKey="value"
                                         >
@@ -422,7 +463,108 @@ const Dashboard: React.FC = () => {
                     )}
                 </Paper>
 
+                {/* Column 3: Options (New) */}
+                <Paper sx={{ flex: 1, p: 3, display: 'flex', flexDirection: 'column' }}>
+                    <Typography variant="h6" sx={{ mb: 0.5 }}>
+                        Transfert de données
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary" sx={{ mb: 2, display: 'block' }}>
+                        transfert d'une année scolaire à une autre
+                    </Typography>
 
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1, justifyContent: 'center' }}>
+                        <Button
+                            variant="contained"
+                            startIcon={<AccountBalance />}
+                            fullWidth
+                            onClick={() => setClassTransferModalOpen(true)}
+                            sx={{
+                                bgcolor: '#e65100',
+                                '&:hover': { bgcolor: '#b33d00' },
+                                justifyContent: 'flex-start',
+                                pl: 3,
+                                height: 48
+                            }}
+                        >
+                            transfert de classes
+                        </Button>
+                        <Button
+                            variant="contained"
+                            startIcon={<SupervisorAccount />}
+                            fullWidth
+                            onClick={() => setStaffTransferOpen(true)}
+                            sx={{
+                                bgcolor: '#c2185b',
+                                '&:hover': { bgcolor: '#880e4f' },
+                                justifyContent: 'flex-start',
+                                pl: 3,
+                                height: 48
+                            }}
+                        >
+                            transfert administratif
+                        </Button>
+                        <Button
+                            variant="contained"
+                            startIcon={<People />}
+                            fullWidth
+                            onClick={() => setTeacherTransferOpen(true)}
+                            sx={{
+                                bgcolor: '#c2185b',
+                                '&:hover': { bgcolor: '#880e4f' },
+                                justifyContent: 'flex-start',
+                                pl: 3,
+                                height: 48
+                            }}
+                        >
+                            transfert d'enseignants
+                        </Button>
+                        <Button
+                            variant="contained"
+                            startIcon={<School />}
+                            fullWidth
+                            onClick={() => setStudentTransferOpen(true)}
+                            sx={{
+                                bgcolor: '#5e35b1',
+                                '&:hover': { bgcolor: '#4527a0' },
+                                justifyContent: 'flex-start',
+                                pl: 3,
+                                height: 48
+                            }}
+                        >
+                            transfert d'élèves
+                        </Button>
+                        <Button
+                            variant="contained"
+                            startIcon={<Book />}
+                            fullWidth
+                            onClick={() => setSubjectTransferOpen(true)}
+                            sx={{
+                                bgcolor: '#00897b',
+                                '&:hover': { bgcolor: '#00695c' },
+                                justifyContent: 'flex-start',
+                                pl: 3,
+                                height: 48
+                            }}
+                        >
+                            transfert de matieres
+                        </Button>
+                        <Button
+                            variant="contained"
+                            startIcon={<Settings />}
+                            fullWidth
+                            onClick={() => setConfigTransferOpen(true)}
+                            sx={{
+                                bgcolor: '#1976d2',
+                                '&:hover': { bgcolor: '#1565c0' },
+                                justifyContent: 'flex-start',
+                                pl: 3,
+                                height: 48
+                            }}
+                        >
+                            transfert des configurations de bulletin
+                        </Button>
+                    </Box>
+                </Paper>
 
                 {/* Column 4: Suggestion Form */}
                 <Paper sx={{ flex: 1, p: 3, display: 'flex', flexDirection: 'column' }}>
@@ -432,27 +574,13 @@ const Dashboard: React.FC = () => {
                     <Typography variant="caption" color="textSecondary" sx={{ mb: 2, display: 'block' }}>
                         Partagez vos idées pour améliorer le logiciel
                     </Typography>
-                    <Box component="form" onSubmit={async (e: React.FormEvent<HTMLFormElement>) => {
-                        e.preventDefault();
-                        const formData = new FormData(e.currentTarget);
-                        const data = {
-                            name: formData.get('name') as string,
-                            email: formData.get('email') as string,
-                            message: formData.get('message') as string
-                        };
-
-                        try {
-                            await api.post('/suggestions', data);
-                            alert('Suggestion envoyée avec succès !');
-                            e.currentTarget.reset();
-                        } catch (error) {
-                            alert('Erreur lors de l\'envoi de la suggestion');
-                        }
-                    }} sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                    <Box component="form" onSubmit={handleSuggestionSubmit} sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1 }}>
                             <TextField
                                 name="name"
                                 label="Nom"
+                                value={suggestionForm.name}
+                                onChange={(e) => setSuggestionForm({ ...suggestionForm, name: e.target.value })}
                                 required
                                 fullWidth
                                 size="small"
@@ -461,6 +589,8 @@ const Dashboard: React.FC = () => {
                                 name="email"
                                 label="Email"
                                 type="email"
+                                value={suggestionForm.email}
+                                onChange={(e) => setSuggestionForm({ ...suggestionForm, email: e.target.value })}
                                 fullWidth
                                 size="small"
                             />
@@ -468,6 +598,9 @@ const Dashboard: React.FC = () => {
                                 name="message"
                                 label="Message"
                                 multiline
+                                rows={4}
+                                value={suggestionForm.message}
+                                onChange={(e) => setSuggestionForm({ ...suggestionForm, message: e.target.value })}
                                 required
                                 fullWidth
                                 size="small"
@@ -491,6 +624,43 @@ const Dashboard: React.FC = () => {
                     </Box>
                 </Paper>
             </Box>
+            <ClassTransferModal open={classTransferModalOpen} onClose={() => setClassTransferModalOpen(false)} />
+            <StudentTransferModal open={studentTransferOpen} onClose={() => setStudentTransferOpen(false)} />
+            <TeacherTransferModal open={teacherTransferOpen} onClose={() => setTeacherTransferOpen(false)} />
+            <StaffTransferModal open={staffTransferOpen} onClose={() => setStaffTransferOpen(false)} />
+            <SubjectTransferModal open={subjectTransferOpen} onClose={() => setSubjectTransferOpen(false)} />
+            <ConfigTransferModal open={configTransferOpen} onClose={() => setConfigTransferOpen(false)} />
+
+            {/* Success Form Dialog */}
+            <Dialog
+                open={suggestionSuccessOpen}
+                onClose={handleSuggestionClose}
+                PaperProps={{
+                    sx: {
+                        borderRadius: 3,
+                        p: 2,
+                        textAlign: 'center',
+                        minWidth: 300
+                    }
+                }}
+            >
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                    <CheckCircle sx={{ fontSize: 60, color: '#4CAF50' }} />
+                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                        Merci !
+                    </Typography>
+                    <Typography color="textSecondary">
+                        Votre suggestion a été envoyée avec succès.
+                    </Typography>
+                    <Button
+                        variant="contained"
+                        onClick={handleSuggestionClose}
+                        sx={{ mt: 2, px: 4, borderRadius: 2 }}
+                    >
+                        Fermer
+                    </Button>
+                </Box>
+            </Dialog>
         </Box>
     );
 };

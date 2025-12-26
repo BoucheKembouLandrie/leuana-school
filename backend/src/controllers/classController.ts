@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Class from '../models/Class';
 import Student from '../models/Student';
+import SchoolYear from '../models/SchoolYear';
 
 export const getAllClasses = async (req: Request, res: Response) => {
     try {
@@ -65,5 +66,43 @@ export const deleteClass = async (req: Request, res: Response) => {
         res.json({ message: 'Class deleted' });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
+    }
+};
+
+export const transferClasses = async (req: Request, res: Response) => {
+    try {
+        const { classIds, destYearId } = req.body;
+
+        if (!classIds || !Array.isArray(classIds) || !destYearId) {
+            return res.status(400).json({ message: 'Invalid payload' });
+        }
+
+        // Fetch destination year to get the correct name string
+        const destYear = await SchoolYear.findByPk(destYearId);
+        if (!destYear) {
+            return res.status(404).json({ message: 'Destination year not found' });
+        }
+
+        let transferCount = 0;
+
+        for (const classId of classIds) {
+            const sourceClass = await Class.findByPk(classId);
+            if (sourceClass) {
+                await Class.create({
+                    libelle: sourceClass.libelle,
+                    niveau: sourceClass.niveau,
+                    annee: destYear.name, // Use destination year name
+                    pension: sourceClass.pension,
+                    school_year_id: destYearId
+                });
+                transferCount++;
+            }
+        }
+
+        res.json({ message: 'Transfer successful', count: transferCount });
+
+    } catch (error) {
+        console.error('Transfer error:', error);
+        res.status(500).json({ message: 'Server error during transfer', error });
     }
 };

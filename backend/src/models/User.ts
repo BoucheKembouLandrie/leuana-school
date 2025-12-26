@@ -5,6 +5,7 @@ class User extends Model {
     public id!: number;
     public username!: string;
     public password!: string;
+    public email!: string | null;
     public role!: 'admin' | 'secretary' | 'teacher';
     public is_default!: boolean;
     public teacher_id!: number | null;
@@ -26,6 +27,13 @@ User.init(
         password: {
             type: DataTypes.STRING,
             allowNull: false,
+        },
+        email: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            validate: {
+                isEmail: true,
+            },
         },
         role: {
             type: DataTypes.ENUM('admin', 'secretary', 'teacher'),

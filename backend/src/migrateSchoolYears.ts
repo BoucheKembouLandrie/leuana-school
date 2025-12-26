@@ -24,7 +24,8 @@ const DATA_TABLES = [
     'attendance',
     'evaluations',
     'staff',
-    'expenses'
+    'expenses',
+    'exam_rules'
 ];
 
 async function migrateToSchoolYears() {
@@ -43,9 +44,9 @@ async function migrateToSchoolYears() {
             where: { name: '2024-2025' },
             defaults: {
                 name: '2024-2025',
-                start_year: 2024,
-                end_year: 2025,
-                is_active: true
+                startYear: 2024,
+                endYear: 2025,
+                isActive: true
             },
             transaction
         });

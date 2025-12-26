@@ -1,6 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import 'dayjs/locale/fr';
 import { theme } from './theme/theme';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -104,44 +107,46 @@ const App: React.FC = () => {
 
   return (
     <AuthContext.Provider value={auth}>
-      <SchoolYearProvider>
-        <SettingsProvider>
-          <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <Router>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route
-                  path="/"
-                  element={
-                    <PrivateRoute>
-                      <DashboardLayout />
-                    </PrivateRoute>
-                  }
-                >
-                  <Route index element={<Dashboard />} />
-                  <Route path="students" element={<Students />} />
-                  <Route path="classes" element={<Classes />} />
-                  <Route path="teachers" element={<Teachers />} />
-                  <Route path="subjects" element={<Subjects />} />
-                  <Route path="examens" element={<Examens />} />
-                  <Route path="grades" element={<Grades />} />
-                  <Route path="payments" element={<Payments />} />
-                  <Route path="attendance" element={<Attendance />} />
-                  <Route path="users" element={<Users />} />
-                  <Route path="settings" element={<Settings />} />
-                  <Route path="administration" element={<Administration />} />
-                  <Route path="staff" element={<Staff />} />
-                  <Route path="expenses" element={<Expenses />} />
-                  <Route path="planning" element={<Planning />} />
-                </Route>
-                {/* Redirect any unknown route to login */}
-                <Route path="*" element={<Navigate to="/login" replace />} />
-              </Routes>
-            </Router>
-          </ThemeProvider>
-        </SettingsProvider>
-      </SchoolYearProvider>
+      <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="fr">
+        <SchoolYearProvider>
+          <SettingsProvider>
+            <ThemeProvider theme={theme}>
+              <CssBaseline />
+              <Router>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route
+                    path="/"
+                    element={
+                      <PrivateRoute>
+                        <DashboardLayout />
+                      </PrivateRoute>
+                    }
+                  >
+                    <Route index element={<Dashboard />} />
+                    <Route path="students" element={<Students />} />
+                    <Route path="classes" element={<Classes />} />
+                    <Route path="teachers" element={<Teachers />} />
+                    <Route path="subjects" element={<Subjects />} />
+                    <Route path="examens" element={<Examens />} />
+                    <Route path="grades" element={<Grades />} />
+                    <Route path="payments" element={<Payments />} />
+                    <Route path="attendance" element={<Attendance />} />
+                    <Route path="users" element={<Users />} />
+                    <Route path="settings" element={<Settings />} />
+                    <Route path="administration" element={<Administration />} />
+                    <Route path="staff" element={<Staff />} />
+                    <Route path="expenses" element={<Expenses />} />
+                    <Route path="planning" element={<Planning />} />
+                  </Route>
+                  {/* Redirect any unknown route to login */}
+                  <Route path="*" element={<Navigate to="/login" replace />} />
+                </Routes>
+              </Router>
+            </ThemeProvider>
+          </SettingsProvider>
+        </SchoolYearProvider>
+      </LocalizationProvider>
     </AuthContext.Provider>
   );
 };

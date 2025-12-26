@@ -18,12 +18,15 @@ import {
     TextField,
     CircularProgress,
     Alert,
+    Grid,
+    MenuItem,
 } from '@mui/material';
 import { Edit, Delete, Add } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import api from '../services/api';
+import { formatDate } from '../utils/formatDate';
 
 const schema = z.object({
     nom: z.string().min(1, 'Nom requis'),
@@ -64,6 +67,10 @@ const Students: React.FC = () => {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    // Filter States
+    const [filterClassId, setFilterClassId] = useState<string>('');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
         resolver: zodResolver(schema),
@@ -120,7 +127,7 @@ const Students: React.FC = () => {
             prenom: student.prenom,
             date_naissance: student.date_naissance,
             sexe: student.sexe as 'M' | 'F',
-            category: student.category || 'Non redoublant',
+            category: student.category || 'Non redoublant(e)',
             adresse: student.adresse,
             parent_tel: student.parent_tel,
             classe_id: student.classe_id.toString(),
@@ -147,6 +154,17 @@ const Students: React.FC = () => {
         reset();
     };
 
+    // Filter Logic
+    const filteredStudents = students.filter(student => {
+        const matchesClass = filterClassId ? student.classe_id.toString() === filterClassId : true;
+        const searchLower = searchQuery.toLowerCase();
+        const matchesSearch = searchQuery
+            ? student.nom.toLowerCase().includes(searchLower) || student.prenom.toLowerCase().includes(searchLower)
+            : true;
+
+        return matchesClass && matchesSearch;
+    });
+
     if (loading) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -168,10 +186,42 @@ const Students: React.FC = () => {
                 </Button>
             </Box>
 
+            <Paper sx={{ p: 3, mb: 4, borderRadius: 2, boxShadow: 1 }}>
+                <Grid container spacing={2} alignItems="center">
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <TextField
+                            select
+                            label="Classe"
+                            value={filterClassId}
+                            onChange={(e) => setFilterClassId(e.target.value)}
+                            fullWidth
+                            SelectProps={{ displayEmpty: true }}
+                            InputLabelProps={{ shrink: true }}
+                        >
+                            <MenuItem value="">Toutes les classes</MenuItem>
+                            {classes.map((c) => (
+                                <MenuItem key={c.id} value={c.id.toString()}>{c.libelle}</MenuItem>
+                            ))}
+                        </TextField>
+                    </Grid>
+
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <TextField
+                            label="Élève"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            fullWidth
+                            placeholder="Rechercher par nom ou prénom"
+                            InputLabelProps={{ shrink: true }}
+                        />
+                    </Grid>
+                </Grid>
+            </Paper>
+
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-            <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 220px)' }}>
-                <Table stickyHeader>
+            <TableContainer component={Paper} sx={{ maxHeight: 586 }}>
+                <Table size="small" stickyHeader>
                     <TableHead>
                         <TableRow>
                             <TableCell>Matricule</TableCell>
@@ -186,12 +236,12 @@ const Students: React.FC = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {students.map((student) => (
+                        {filteredStudents.map((student) => (
                             <TableRow key={student.id} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#f2eef9' } }}>
                                 <TableCell>{student.matricule}</TableCell>
                                 <TableCell>{student.nom}</TableCell>
                                 <TableCell>{student.prenom}</TableCell>
-                                <TableCell>{new Date(student.date_naissance).toLocaleDateString()}</TableCell>
+                                <TableCell>{formatDate(student.date_naissance)}</TableCell>
                                 <TableCell>{student.sexe}</TableCell>
                                 <TableCell>{student.class?.libelle || 'N/A'}</TableCell>
                                 <TableCell>{student.category}</TableCell>
@@ -206,6 +256,13 @@ const Students: React.FC = () => {
                                 </TableCell>
                             </TableRow>
                         ))}
+                        {filteredStudents.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={9} align="center">
+                                    Aucun élève trouvé
+                                </TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                 </Table>
             </TableContainer>
@@ -259,10 +316,10 @@ const Students: React.FC = () => {
                             helperText={errors.category?.message}
                             fullWidth
                             SelectProps={{ native: true }}
-                            defaultValue="Non redoublant"
+                            defaultValue="Non redoublant(e)"
                         >
-                            <option value="Non redoublant">Non redoublant</option>
-                            <option value="Redoublant">Redoublant</option>
+                            <option value="Non redoublant(e)">Non redoublant(e)</option>
+                            <option value="Redoublant(e)">Redoublant(e)</option>
                         </TextField>
                         <TextField
                             label="Adresse"

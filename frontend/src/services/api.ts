@@ -17,7 +17,9 @@ api.interceptors.request.use((config) => {
             const parsed = JSON.parse(savedYear);
             // Verify if parsed object has id property before injecting
             if (parsed && typeof parsed === 'object' && 'id' in parsed) {
-                config.headers['x-school-year-id'] = parsed.id;
+                if (!config.headers['x-school-year-id']) {
+                    config.headers['x-school-year-id'] = parsed.id;
+                }
             }
         } catch (e) {
             // Passive failure - just don't inject header if parse fails

@@ -127,7 +127,11 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/suggestions', suggestionRoutes);
 app.use('/api/data', dataRoutes);
+import examRuleRoutes from './routes/examRuleRoutes';
+
+// ... existing routes ...
 app.use('/api/school-years', schoolYearRoutes);
+app.use('/api/exam-rules', examRuleRoutes);
 
 // END DIRECT ROUTE
 

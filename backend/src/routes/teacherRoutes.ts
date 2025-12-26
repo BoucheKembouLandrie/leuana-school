@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getAllTeachers, getTeacherById, createTeacher, updateTeacher, deleteTeacher } from '../controllers/teacherController';
+import { getAllTeachers, getTeacherById, createTeacher, updateTeacher, deleteTeacher, transferTeachers } from '../controllers/teacherController';
 import { authenticateToken } from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -11,5 +11,6 @@ router.get('/:id', getTeacherById);
 router.post('/', createTeacher);
 router.put('/:id', updateTeacher);
 router.delete('/:id', deleteTeacher);
+router.post('/action/transfer', transferTeachers);
 
 export default router;

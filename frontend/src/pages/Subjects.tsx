@@ -19,6 +19,7 @@ import {
     CircularProgress,
     Alert,
     MenuItem,
+    Grid,
 } from '@mui/material';
 import { Edit, Delete, Add } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
@@ -40,8 +41,8 @@ type FormData = z.infer<typeof schema>;
 interface Subject {
     id: number;
     nom: string;
-    teacher_id: number;
-    classe_id: number;
+    teacher_id: number | null;
+    classe_id: number | null;
     coefficient: number;
     teacher?: { nom: string; prenom: string };
     class?: { libelle: string };
@@ -66,6 +67,9 @@ const Subjects: React.FC = () => {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    // Filter State
+    const [filterClassId, setFilterClassId] = useState<string>('');
 
     const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
         resolver: zodResolver(schema),
@@ -115,8 +119,8 @@ const Subjects: React.FC = () => {
         setEditingId(subject.id);
         reset({
             nom: subject.nom,
-            teacher_id: subject.teacher_id.toString(),
-            classe_id: subject.classe_id.toString(),
+            teacher_id: subject.teacher_id ? subject.teacher_id.toString() : '',
+            classe_id: subject.classe_id ? subject.classe_id.toString() : '',
             coefficient: subject.coefficient?.toString() || '1',
         });
         setOpen(true);
@@ -141,6 +145,12 @@ const Subjects: React.FC = () => {
         reset();
     };
 
+    // Filter Logic
+    const filteredSubjects = subjects.filter(subject => {
+        if (!filterClassId) return true;
+        return subject.classe_id.toString() === filterClassId;
+    });
+
     if (loading) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -162,10 +172,31 @@ const Subjects: React.FC = () => {
                 </Button>
             </Box>
 
+            <Paper sx={{ p: 3, mb: 4, borderRadius: 2, boxShadow: 1 }}>
+                <Grid container spacing={2} alignItems="center">
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <TextField
+                            select
+                            label="Classe"
+                            value={filterClassId}
+                            onChange={(e) => setFilterClassId(e.target.value)}
+                            fullWidth
+                            SelectProps={{ displayEmpty: true }}
+                            InputLabelProps={{ shrink: true }}
+                        >
+                            <MenuItem value="">Toutes les classes</MenuItem>
+                            {classes.map((c) => (
+                                <MenuItem key={c.id} value={c.id.toString()}>{c.libelle}</MenuItem>
+                            ))}
+                        </TextField>
+                    </Grid>
+                </Grid>
+            </Paper>
+
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-            <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 220px)' }}>
-                <Table stickyHeader>
+            <TableContainer component={Paper} sx={{ maxHeight: 586 }}>
+                <Table size="small" stickyHeader>
                     <TableHead>
                         <TableRow>
                             <TableCell>Nom</TableCell>
@@ -176,7 +207,7 @@ const Subjects: React.FC = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {subjects.map((subject) => (
+                        {filteredSubjects.map((subject) => (
                             <TableRow key={subject.id} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#eaf5f4' } }}>
                                 <TableCell>{subject.nom}</TableCell>
                                 <TableCell>{subject.coefficient}</TableCell>
@@ -194,6 +225,13 @@ const Subjects: React.FC = () => {
                                 </TableCell>
                             </TableRow>
                         ))}
+                        {filteredSubjects.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={5} align="center">
+                                    Aucune matière trouvée
+                                </TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                 </Table >
             </TableContainer >

@@ -10,6 +10,9 @@ class Subject extends Model {
     public classe_id!: number;
     public coefficient!: number;
     public school_year_id!: number;
+    // Associations
+    public teacher?: any; // optional Teacher instance
+    public class?: any; // optional Class instance
 }
 
 Subject.init(
@@ -33,7 +36,7 @@ Subject.init(
         },
         classe_id: {
             type: DataTypes.INTEGER,
-            allowNull: false,
+            allowNull: true,
             references: {
                 model: Class,
                 key: 'id',

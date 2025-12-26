@@ -68,7 +68,7 @@ Student.init(
         category: {
             type: DataTypes.STRING,
             allowNull: false,
-            defaultValue: 'Non redoublant',
+            defaultValue: 'Non redoublant(e)',
         },
         school_year_id: {
             type: DataTypes.INTEGER,

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, IconButton } from '@mui/material';
-import { Menu as MenuIcon, Dashboard, People, School, Payment, EventAvailable, Grade, Settings, ExitToApp, Book, AccountBalance, AccountCircle, Assignment, PriceChange, DateRange } from '@mui/icons-material';
+import { Menu as MenuIcon, Dashboard, People, School, Payment, EventAvailable, Settings, ExitToApp, Book, AccountBalance, AccountCircle, Assignment, PriceChange, DateRange } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../App';
 import SchoolYearSelector from '../components/SchoolYearSelector';
@@ -19,7 +19,7 @@ const menuItems = [
     { text: 'Élèves', title: 'Gestion des Élèves', icon: <School />, path: '/students', color: '#5e35b1' }, // Deep Purple
     { text: 'Planning', title: 'Planning Scolaire', icon: <DateRange />, path: '/planning', color: '#2e7d32' }, // Green
     { text: 'Examens', title: 'Gestion des Examens', icon: <Assignment />, path: '/examens', color: '#d32f2f' }, // Red
-    { text: 'Notes', title: 'Gestion des Notes', icon: <Grade />, path: '/grades', color: '#ff6f00' }, // Amber
+
     { text: 'Pensions', title: 'Gestion des Pensions', icon: <Payment />, path: '/payments', color: '#fbc02d' }, // Yellow
     { text: 'Présences', title: 'Gestion des Présences', icon: <EventAvailable />, path: '/attendance', color: '#1e88e5' }, // Blue
     { text: 'Utilisateurs', title: 'Gestion des Utilisateurs', icon: <AccountCircle />, path: '/users', color: '#8e24aa' }, // Purple
@@ -31,7 +31,7 @@ const DashboardLayout: React.FC = () => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
-    const { logout, hasPermission, user } = useAuthContext();
+    const { logout, hasPermission } = useAuthContext();
 
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
@@ -72,16 +72,16 @@ const DashboardLayout: React.FC = () => {
     });
 
     const drawer = (
-        <div>
+        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <SchoolYearSelector />
             <Toolbar sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
                 <img
                     src={settings?.logo_url ? `${BASE_URL}${settings.logo_url}` : "/logo.jpg"}
-                    alt={settings?.school_name || "Leuana School Management Software"}
+                    alt={settings?.school_name || "BOKELAND SCHOOL SYSTEM Management Software"}
                     style={{ width: '111px', height: '111px', objectFit: 'contain' }}
                 />
             </Toolbar>
-            <List>
+            <List sx={{ flexGrow: 1, overflowY: 'auto' }}>
                 {filteredMenuItems.map((item) => {
                     const isSelected = location.pathname === item.path;
                     return (
@@ -123,7 +123,12 @@ const DashboardLayout: React.FC = () => {
                     </ListItemButton>
                 </ListItem>
             </List>
-        </div>
+            <Box sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="caption" sx={{ color: '#9e9e9e', fontSize: '0.7rem' }}>
+                    Version 1.0.0
+                </Typography>
+            </Box>
+        </Box>
     );
 
     return (
@@ -136,7 +141,8 @@ const DashboardLayout: React.FC = () => {
                     ml: { sm: `${drawerWidth}px` },
                     backgroundColor: '#fff',
                     color: '#333',
-                    boxShadow: '0px 1px 4px rgba(0,0,0,0.1)'
+                    boxShadow: '0px 1px 4px rgba(0,0,0,0.1)',
+                    borderRadius: 0
                 }}
             >
                 <Toolbar>

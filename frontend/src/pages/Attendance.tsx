@@ -23,10 +23,13 @@ import {
     Autocomplete,
 } from '@mui/material';
 import { Edit, Delete, Add } from '@mui/icons-material';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import api from '../services/api';
+import { formatDate } from '../utils/formatDate';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 const schema = z.object({
     date: z.string().min(1, 'Date requise'),
@@ -76,7 +79,7 @@ const Attendance: React.FC = () => {
     const [filterStudent, setFilterStudent] = useState('');
     const [filterStudentsList, setFilterStudentsList] = useState<Student[]>([]);
 
-    const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
+    const { register, handleSubmit, reset, watch, setValue, control, formState: { errors } } = useForm<FormData>({
         resolver: zodResolver(schema),
     });
 
@@ -222,13 +225,11 @@ const Attendance: React.FC = () => {
             <Paper sx={{ p: 3, mb: 3 }}>
                 <Grid container spacing={2} alignItems="center">
                     <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                        <TextField
+                        <DatePicker
                             label="Date"
-                            type="date"
-                            fullWidth
-                            value={filterDate}
-                            onChange={(e) => setFilterDate(e.target.value)}
-                            InputLabelProps={{ shrink: true }}
+                            value={filterDate ? dayjs(filterDate) : null}
+                            onChange={(newValue) => setFilterDate(newValue ? newValue.format('YYYY-MM-DD') : '')}
+                            slotProps={{ textField: { fullWidth: true, InputLabelProps: { shrink: true } } }}
                         />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -285,8 +286,8 @@ const Attendance: React.FC = () => {
                 </Grid>
             </Paper>
 
-            <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
-                <Table stickyHeader>
+            <TableContainer component={Paper} sx={{ maxHeight: 586 }}>
+                <Table size="small" stickyHeader>
                     <TableHead>
                         <TableRow>
                             <TableCell>Nom</TableCell>
@@ -302,7 +303,7 @@ const Attendance: React.FC = () => {
                                 <TableCell>
                                     {attendance.student ? `${attendance.student.nom} ${attendance.student.prenom}` : 'N/A'}
                                 </TableCell>
-                                <TableCell>{new Date(attendance.date).toLocaleDateString('fr-FR')}</TableCell>
+                                <TableCell>{formatDate(attendance.date)}</TableCell>
                                 <TableCell>{attendance.motif}</TableCell>
                                 <TableCell>{attendance.time}</TableCell>
                                 <TableCell>
@@ -323,15 +324,25 @@ const Attendance: React.FC = () => {
                 <DialogTitle>{editingId ? 'Modifier la présence' : 'Ajouter une présence'}</DialogTitle>
                 <DialogContent>
                     <Box component="form" sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <TextField
-                            label="Date"
-                            type="date"
-                            {...register('date')}
-                            error={!!errors.date}
-                            helperText={errors.date?.message}
-                            fullWidth
-                            InputLabelProps={{ shrink: true }}
+                        <Controller
+                            control={control}
+                            name="date"
                             defaultValue={new Date().toISOString().split('T')[0]}
+                            render={({ field }) => (
+                                <DatePicker
+                                    label="Date"
+                                    value={field.value ? dayjs(field.value) : null}
+                                    onChange={(newValue) => field.onChange(newValue ? newValue.format('YYYY-MM-DD') : '')}
+                                    slotProps={{
+                                        textField: {
+                                            fullWidth: true,
+                                            InputLabelProps: { shrink: true },
+                                            error: !!errors.date,
+                                            helperText: errors.date?.message
+                                        }
+                                    }}
+                                />
+                            )}
                         />
                         <TextField
                             select

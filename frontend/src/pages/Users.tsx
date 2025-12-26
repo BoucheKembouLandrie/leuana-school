@@ -30,6 +30,7 @@ import api from '../services/api';
 const schema = z.object({
     username: z.string().min(3, 'Nom d\'utilisateur requis (min 3 caractères)'),
     password: z.string().min(6, 'Motif requis'),
+    email: z.string().email('Email invalide').optional().or(z.literal('')),
     role: z.enum(['admin', 'secretary', 'teacher']),
     teacher_id: z.string().optional(),
     permissions: z.array(z.string()).optional(),
@@ -40,6 +41,7 @@ type FormData = z.infer<typeof schema>;
 interface User {
     id: number;
     username: string;
+    email?: string;
     role: 'admin' | 'secretary' | 'teacher';
     is_default?: boolean;
     teacher_id?: number | null;
@@ -91,6 +93,7 @@ const Users: React.FC = () => {
             const payload: any = {
                 username: data.username,
                 password: data.password,
+                email: data.email || null,
                 role: data.role,
             };
 
@@ -124,6 +127,7 @@ const Users: React.FC = () => {
         setSelectedPermissions(user.permissions || []);
         reset({
             username: user.username,
+            email: user.email || '',
             role: user.role,
             password: '',
             teacher_id: user.teacher_id?.toString() || '',
@@ -189,11 +193,12 @@ const Users: React.FC = () => {
 
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-            <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 220px)' }}>
-                <Table stickyHeader>
+            <TableContainer component={Paper} sx={{ maxHeight: 586 }}>
+                <Table size="small" stickyHeader>
                     <TableHead>
                         <TableRow>
                             <TableCell>Nom d'utilisateur</TableCell>
+                            <TableCell>Email</TableCell>
                             <TableCell>Rôle</TableCell>
                             <TableCell>Actions</TableCell>
                         </TableRow>
@@ -205,6 +210,7 @@ const Users: React.FC = () => {
                                     {user.username}
                                     {user.is_default && <Chip label="PAR DÉFAUT" size="small" color="warning" sx={{ ml: 1 }} />}
                                 </TableCell>
+                                <TableCell>{user.email || '-'}</TableCell>
                                 <TableCell>
                                     <Chip
                                         label={user.role.toUpperCase()}
@@ -268,6 +274,18 @@ const Users: React.FC = () => {
                             <MenuItem value="secretary">Secrétaire</MenuItem>
                             <MenuItem value="teacher">Enseignant</MenuItem>
                         </TextField>
+
+                        {selectedRole === 'admin' && (
+                            <TextField
+                                label="Adresse email"
+                                type="email"
+                                {...register('email')}
+                                error={!!errors.email}
+                                helperText={errors.email?.message}
+                                fullWidth
+                                placeholder="utilisateur@example.com"
+                            />
+                        )}
 
                         {selectedRole === 'teacher' && (
                             <TextField

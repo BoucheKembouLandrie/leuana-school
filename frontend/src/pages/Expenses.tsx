@@ -31,6 +31,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import api from '../services/api';
+import { formatDate } from '../utils/formatDate';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { Controller } from 'react-hook-form';
+import dayjs from 'dayjs';
 
 const schema = z.object({
     titre: z.string().optional(),
@@ -98,7 +102,7 @@ const Expenses: React.FC = () => {
         setError(''); // Clear any error messages when switching tabs
     };
 
-    const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormData>({
+    const { register, handleSubmit, reset, setValue, watch, control, formState: { errors } } = useForm<FormData>({
         resolver: zodResolver(schema),
         defaultValues: {
             date_depense: new Date().toISOString().split('T')[0],
@@ -349,21 +353,17 @@ const Expenses: React.FC = () => {
 
             <Box sx={{ mb: 3 }}>
                 <Paper sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
-                    <TextField
+                    <DatePicker
                         label="Date début"
-                        type="date"
-                        InputLabelProps={{ shrink: true }}
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        sx={{ flex: 1 }}
+                        value={startDate ? dayjs(startDate) : null}
+                        onChange={(newValue) => setStartDate(newValue ? newValue.format('YYYY-MM-DD') : '')}
+                        slotProps={{ textField: { sx: { flex: 1 }, InputLabelProps: { shrink: true } } }}
                     />
-                    <TextField
+                    <DatePicker
                         label="Date fin"
-                        type="date"
-                        InputLabelProps={{ shrink: true }}
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        sx={{ flex: 1 }}
+                        value={endDate ? dayjs(endDate) : null}
+                        onChange={(newValue) => setEndDate(newValue ? newValue.format('YYYY-MM-DD') : '')}
+                        slotProps={{ textField: { sx: { flex: 1 }, InputLabelProps: { shrink: true } } }}
                     />
                     <TextField
                         label="Recherche"
@@ -391,8 +391,8 @@ const Expenses: React.FC = () => {
 
                         {error && activeTab === 0 && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-                        <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 350px)' }}>
-                            <Table stickyHeader>
+                        <TableContainer component={Paper} sx={{ maxHeight: 586 }}>
+                            <Table size="small" stickyHeader>
                                 <TableHead>
                                     <TableRow>
                                         <TableCell>Date</TableCell>
@@ -405,7 +405,7 @@ const Expenses: React.FC = () => {
                                 <TableBody>
                                     {generalExpenses.map((expense) => (
                                         <TableRow key={expense.id} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#f4f1f0' } }}>
-                                            <TableCell>{new Date(expense.date_depense).toLocaleDateString('fr-FR')}</TableCell>
+                                            <TableCell>{formatDate(expense.date_depense)}</TableCell>
                                             <TableCell>{expense.titre}</TableCell>
                                             <TableCell>{expense.description || '-'}</TableCell>
                                             <TableCell>{expense.montant.toLocaleString()}</TableCell>
@@ -434,21 +434,12 @@ const Expenses: React.FC = () => {
             <div role="tabpanel" hidden={activeTab !== 1}>
                 {activeTab === 1 && (
                     <Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                            <Button
-                                variant="contained"
-                                startIcon={<Add />}
-                                onClick={handleOpenSalary}
-                                sx={{ backgroundColor: '#795548', '&:hover': { backgroundColor: '#5d4037' }, minWidth: '180px', height: '40px' }}
-                            >
-                                Nouveau salaire
-                            </Button>
-                        </Box>
+
 
                         {error && activeTab === 1 && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-                        <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 350px)' }}>
-                            <Table stickyHeader>
+                        <TableContainer component={Paper} sx={{ maxHeight: 586 }}>
+                            <Table size="small" stickyHeader>
                                 <TableHead>
                                     <TableRow>
                                         <TableCell>Date</TableCell>
@@ -466,7 +457,7 @@ const Expenses: React.FC = () => {
 
                                         return (
                                             <TableRow key={expense.id} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#f4f1f0' } }}>
-                                                <TableCell>{new Date(expense.date_depense).toLocaleDateString('fr-FR')}</TableCell>
+                                                <TableCell>{formatDate(expense.date_depense)}</TableCell>
                                                 <TableCell>{name}</TableCell>
                                                 <TableCell>{expense.montant.toLocaleString()}</TableCell>
                                                 <TableCell>
@@ -478,9 +469,6 @@ const Expenses: React.FC = () => {
                                                     />
                                                 </TableCell>
                                                 <TableCell>
-                                                    <IconButton onClick={() => handleEdit(expense)} color="primary">
-                                                        <Edit />
-                                                    </IconButton>
                                                     <IconButton onClick={() => handleDelete(expense.id)} color="error">
                                                         <Delete />
                                                     </IconButton>
@@ -593,15 +581,25 @@ const Expenses: React.FC = () => {
                             </>
                         )}
 
-                        <TextField
-                            label="Date"
-                            type="date"
-                            {...register('date_depense')}
-                            error={!!errors.date_depense}
-                            helperText={errors.date_depense?.message}
-                            fullWidth
-                            InputLabelProps={{ shrink: true }}
-                            disabled={mode === 'salary'}
+                        <Controller
+                            control={control}
+                            name="date_depense"
+                            render={({ field }) => (
+                                <DatePicker
+                                    label="Date"
+                                    value={field.value ? dayjs(field.value) : null}
+                                    onChange={(newValue) => field.onChange(newValue ? newValue.format('YYYY-MM-DD') : '')}
+                                    disabled={mode === 'salary'}
+                                    slotProps={{
+                                        textField: {
+                                            fullWidth: true,
+                                            InputLabelProps: { shrink: true },
+                                            error: !!errors.date_depense,
+                                            helperText: errors.date_depense?.message
+                                        }
+                                    }}
+                                />
+                            )}
                         />
                     </Box>
                 </DialogContent>

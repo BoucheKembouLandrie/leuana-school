@@ -17,14 +17,17 @@ export const sendSuggestion = async (req: Request, res: Response) => {
             secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
             auth: {
                 user: process.env.EMAIL_USER || 'suggestion@bokeland.com',
-                pass: process.env.EMAIL_PASS || 'your-app-password'
+                pass: process.env.EMAIL_PASSWORD || 'your-app-password'
+            },
+            tls: {
+                rejectUnauthorized: false
             }
         });
 
         // Email options
         const mailOptions = {
             from: 'suggestion@bokeland.com',
-            to: 'infos@bokeland.com',
+            to: 'client-form@bokeland.com',
             subject: 'boite à suggestion du logiciel scolaire',
             text: `Nom: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
             html: `
